@@ -1,0 +1,185 @@
+import { GEMINI_INPUT_JSON_TEXT } from "../hooks/geminiInput";
+
+export const GEMINI_MODEL = "gemini-2.5-flash";
+
+// Try common env sources; you can replace this later
+export const getGeminiApiKey = (): string => {
+	const candidates = [
+		// Preferred: Next.js client-exposed env var
+		typeof process !== "undefined" ? (process.env.NEXT_PUBLIC_GEMINI_API_KEY as string | undefined) : undefined,
+		// Fallbacks for manual/global injection
+		(globalThis as any).__GEMINI_API_KEY__,
+		(globalThis as any).GEMINI_API_KEY,
+		// Other environments (e.g., Vite) as a last resort
+		typeof import.meta !== "undefined" ? (import.meta as any).env?.VITE_GEMINI_API_KEY : undefined,
+		// In case someone sets it on global process env with the NEXT_PUBLIC prefix
+		(globalThis as any).process?.env?.NEXT_PUBLIC_GEMINI_API_KEY,
+	];
+	return candidates.find(Boolean) || "";
+};
+
+type GeminiGenerateContentResponse = {
+	candidates?: Array<{
+		content?: { parts?: Array<{ text?: string }> };
+		finishReason?: string;
+	}>;
+};
+
+export type ConversationMessage = {
+	role: "user" | "model";
+	parts: Array<{ text: string }>;
+};
+
+// Core call to Gemini's generateContent REST API (no SDK needed)
+export async function callGeminiGenerateContent(options?: {
+	apiKey?: string;
+	model?: string;
+	systemPrompt?: string;
+	userText?: string;
+	conversationHistory?: ConversationMessage[];
+}): Promise<GeminiGenerateContentResponse> {
+	const apiKey = options?.apiKey || getGeminiApiKey();
+	if (!apiKey) throw new Error("Missing Gemini API key");
+
+	const model = options?.model || GEMINI_MODEL;
+	const systemPrompt =
+		options?.systemPrompt ||
+		`You are a time tracking assistant. Convert the following voice note transcripts into a structured daily schedule.
+
+Rules:
+1. Return ONLY valid JSON - no markdown, no code blocks, no explanations
+2. Each entry must have: start_time, end_time, description
+3. Use 12-hour format for times (HH:mm AM/PM)
+4. Infer end times from the next activity's start time
+5. Be concise in descriptions, which should be in present tense to decribe the activity in the time block
+6. If the user's input is longer than two sentences, add a note section to summarize what was talked about. Usually this is task for the future, thoughts. No need to repeat or explain the activity.
+
+Example format:
+[
+  {"start_time": "07:34 AM", "end_time": "07:41 AM", "description": "Morning work session"},
+  {"start_time": "07:41 AM", "end_time": "08:40 AM", "description": "Breakfast"}
+]`;
+	
+	const userText = options?.userText || GEMINI_INPUT_JSON_TEXT;
+
+	const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+		model
+	)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+	// Build conversation contents
+	const contents: ConversationMessage[] = [];
+	
+	// Add system prompt as first user message
+	if (!options?.conversationHistory || options.conversationHistory.length === 0) {
+		contents.push({
+			role: "user",
+			parts: [{ text: systemPrompt }, { text: userText }],
+		});
+	} else {
+		// If we have conversation history, include it
+		contents.push(...options.conversationHistory);
+		// Add the new user message
+		if (userText !== GEMINI_INPUT_JSON_TEXT) {
+			contents.push({
+				role: "user",
+				parts: [{ text: userText }],
+			});
+		}
+	}
+
+	const body = {
+		contents,
+	};
+
+	const res = await fetch(url, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+	});
+
+	if (!res.ok) {
+		const text = await res.text().catch(() => "");
+		throw new Error(`Gemini API error ${res.status}: ${text}`);
+	}
+
+	return (await res.json()) as GeminiGenerateContentResponse;
+}
+
+// Helper: pull plain text from the Gemini response
+export function extractTextFromGeminiResponse(data: GeminiGenerateContentResponse): string {
+	const parts = data?.candidates?.flatMap((c) => c.content?.parts || []) || [];
+	const texts = parts.map((p) => p.text).filter(Boolean) as string[];
+	return texts.join("\n").trim();
+}
+
+// Type for saved schedule
+export type SavedSchedule = {
+	id: string;
+	date: string;
+	scheduleData: Array<{
+		start_time: string;
+		end_time: string;
+		description: string;
+		note?: string;
+	}>;
+	conversationHistory: ConversationMessage[];
+	savedAt: string;
+};
+
+// Save confirmed schedule to localStorage
+export function saveConfirmedSchedule(
+	scheduleData: SavedSchedule["scheduleData"],
+	conversationHistory: ConversationMessage[]
+): SavedSchedule {
+	const savedSchedule: SavedSchedule = {
+		id: `schedule_${Date.now()}`,
+		date: new Date().toISOString().split("T")[0],
+		scheduleData,
+		conversationHistory,
+		savedAt: new Date().toISOString(),
+	};
+
+	try {
+		// Get existing schedules
+		const existingSchedules = getSavedSchedules();
+		// Add new schedule
+		existingSchedules.push(savedSchedule);
+		// Save to localStorage
+		localStorage.setItem("confirmedSchedules", JSON.stringify(existingSchedules));
+		console.log("Schedule saved successfully:", savedSchedule);
+		return savedSchedule;
+	} catch (error) {
+		console.error("Failed to save schedule:", error);
+		throw new Error("Failed to save schedule to storage");
+	}
+}
+
+// Get all saved schedules from localStorage
+export function getSavedSchedules(): SavedSchedule[] {
+	try {
+		const stored = localStorage.getItem("confirmedSchedules");
+		if (!stored) return [];
+		return JSON.parse(stored) as SavedSchedule[];
+	} catch (error) {
+		console.error("Failed to load schedules:", error);
+		return [];
+	}
+}
+
+// Delete a saved schedule by id
+export function deleteSchedule(id: string): void {
+	try {
+		const schedules = getSavedSchedules();
+		const filtered = schedules.filter((s) => s.id !== id);
+		localStorage.setItem("confirmedSchedules", JSON.stringify(filtered));
+	} catch (error) {
+		console.error("Failed to delete schedule:", error);
+		throw new Error("Failed to delete schedule");
+	}
+}
+
+// Optional placeholder component; wire up as needed
+export default function TableChat() {
+	return null;
+}
+

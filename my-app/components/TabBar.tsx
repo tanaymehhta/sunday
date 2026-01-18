@@ -13,6 +13,7 @@ interface TabBarProps {
 
 const tabs: Tab[] = [
   { id: "record", icon: "🎙️", label: "Record" },
+  { id: "confirm", icon: "✅", label: "Confirm" },
   { id: "insights", icon: "📊", label: "Insights" },
 ];
 

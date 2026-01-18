@@ -76,6 +76,22 @@ npm run dev
 - `npm start` - Start production server
 - `npm run lint` - Run ESLint
 
+## Environment Setup (Gemini API)
+
+To enable Gemini-powered features, add your API key to an environment file:
+
+1. Create or edit `.env.local` in the project root:
+```bash
+echo "NEXT_PUBLIC_GEMINI_API_KEY=your-api-key-here" > .env.local
+```
+
+2. Replace `your-api-key-here` with your actual Gemini API key.
+
+Notes:
+- Only variables prefixed with `NEXT_PUBLIC_` are exposed to the browser in Next.js.
+- The app reads the key via `process.env.NEXT_PUBLIC_GEMINI_API_KEY` (see [components/TableChat.tsx](components/TableChat.tsx)).
+- Restart the dev server after editing `.env.local`.
+
 ## Usage
 
 ### Recording Voice Memos
