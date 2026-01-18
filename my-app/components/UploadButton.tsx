@@ -12,10 +12,13 @@ const UploadButton: React.FC<UploadButtonProps> = ({ onUpload }) => {
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      onUpload(file);
-      // Reset the input so the same file can be uploaded again if needed
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      // Process each file
+      Array.from(files).forEach(file => {
+        onUpload(file);
+      });
+      // Reset the input so the same files can be uploaded again if needed
       event.target.value = '';
     }
   };
@@ -26,13 +29,14 @@ const UploadButton: React.FC<UploadButtonProps> = ({ onUpload }) => {
         ref={fileInputRef}
         type="file"
         accept="audio/*"
+        multiple
         onChange={handleFileChange}
         style={{ display: 'none' }}
       />
       <button
         className="upload-button"
         onClick={handleClick}
-        title="Upload audio file"
+        title="Upload audio files"
       >
         <svg
           className="upload-icon"
