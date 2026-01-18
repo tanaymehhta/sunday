@@ -7,7 +7,12 @@ import RecordingsList from "@/components/RecordingsList";
 import TabBar from "@/components/TabBar";
 import VoiceToText from "@/components/VoiceToText";
 import { useRecording } from "@/hooks/useRecording";
-import { callGeminiGenerateContent, extractTextFromGeminiResponse, ConversationMessage } from "@/components/TableChat";
+import {
+  callGeminiGenerateContent,
+  extractTextFromGeminiResponse,
+  ConversationMessage,
+  saveConfirmedSchedule,
+} from "@/components/TableChat";
 import { GEMINI_INPUT_JSON_TEXT } from "@/hooks/geminiInput";
 import ScheduleTable, { ScheduleEntry } from "@/components/ScheduleTable";
 
@@ -32,18 +37,16 @@ export default function Home() {
   } = useRecording();
 
   const handleExtractTasks = () => {
-    // TODO: Implement task extraction logic
     alert("Task extraction will be implemented with backend API");
   };
 
   const parseScheduleFromResponse = (text: string): ScheduleEntry[] => {
     try {
-      // Remove markdown code blocks if present
       let cleanText = text.trim();
       cleanText = cleanText.replace(/```json\n?/g, "");
       cleanText = cleanText.replace(/```\n?/g, "");
       cleanText = cleanText.trim();
-      
+
       const parsed = JSON.parse(cleanText);
       if (Array.isArray(parsed)) {
         return parsed;
@@ -57,7 +60,6 @@ export default function Home() {
 
   const handleRunGemini = async () => {
     if (!hasInitialResponse) {
-      // Initial call
       setIsRunning(true);
       try {
         const response = await callGeminiGenerateContent({
@@ -65,11 +67,10 @@ export default function Home() {
         });
         const text = extractTextFromGeminiResponse(response);
         console.log("Gemini API Response:", text);
-        
+
         const schedule = parseScheduleFromResponse(text);
         setScheduleData(schedule);
-        
-        // Initialize conversation history
+
         const newHistory: ConversationMessage[] = [
           {
             role: "user",
@@ -91,12 +92,11 @@ export default function Home() {
         setIsRunning(false);
       }
     } else {
-      // Feedback loop
       if (!userInput.trim()) {
         alert("Please enter your feedback");
         return;
       }
-      
+
       setIsRunning(true);
       try {
         const response = await callGeminiGenerateContent({
@@ -105,11 +105,10 @@ export default function Home() {
         });
         const text = extractTextFromGeminiResponse(response);
         console.log("Gemini API Response:", text);
-        
+
         const schedule = parseScheduleFromResponse(text);
         setScheduleData(schedule);
-        
-        // Update conversation history
+
         const newHistory: ConversationMessage[] = [
           ...conversationHistory,
           {
@@ -141,6 +140,16 @@ export default function Home() {
     setUserInput("");
   };
 
+  const handleConfirmSchedule = () => {
+    try {
+      saveConfirmedSchedule(scheduleData, conversationHistory);
+      alert("✓ Schedule confirmed and saved successfully!");
+    } catch (error) {
+      console.error("Error saving schedule:", error);
+      alert(`Error saving schedule: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case "record":
@@ -162,6 +171,7 @@ export default function Home() {
             />
           </>
         );
+
       case "tasks":
         return (
           <div style={{ padding: "40px 24px", textAlign: "center" }}>
@@ -171,6 +181,7 @@ export default function Home() {
             </p>
           </div>
         );
+
       case "insights":
         return (
           <div style={{ padding: "40px 24px", textAlign: "center" }}>
@@ -180,34 +191,37 @@ export default function Home() {
             </p>
           </div>
         );
+
       case "confirm":
         return (
           <div style={{ padding: "20px 24px 100px", minHeight: "calc(100vh - 80px)" }}>
             <h1 className="title" style={{ textAlign: "center", marginBottom: "20px" }}>
               Schedule Confirmation
             </h1>
-            
+
             {showSuccess && (
-              <div style={{
-                position: "fixed",
-                top: "20px",
-                right: "20px",
-                backgroundColor: "#34C759",
-                color: "#fff",
-                padding: "12px 20px",
-                borderRadius: "8px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-                zIndex: 1000,
-                animation: "slideIn 0.3s ease-out",
-              }}>
+              <div
+                style={{
+                  position: "fixed",
+                  top: "20px",
+                  right: "20px",
+                  backgroundColor: "#34C759",
+                  color: "#fff",
+                  padding: "12px 20px",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                  zIndex: 1000,
+                  animation: "slideIn 0.3s ease-out",
+                }}
+              >
                 <span style={{ fontSize: "18px" }}>✓</span>
                 <span style={{ fontWeight: "600", fontSize: "14px" }}>Schedule Updated</span>
               </div>
             )}
-            
+
             {!hasInitialResponse ? (
               <div style={{ textAlign: "center", marginTop: "40px" }}>
                 <p className="subtitle" style={{ marginBottom: "30px" }}>
@@ -234,20 +248,24 @@ export default function Home() {
             ) : (
               <>
                 <ScheduleTable entries={scheduleData} />
-                
-                <div style={{ 
-                  maxWidth: "800px", 
-                  margin: "30px auto",
-                  padding: "20px",
-                  backgroundColor: "#f8f9fa",
-                  borderRadius: "12px",
-                }}>
-                  <p style={{ 
-                    fontSize: "14px", 
-                    color: "#666", 
-                    marginBottom: "12px",
-                    fontWeight: "500",
-                  }}>
+
+                <div
+                  style={{
+                    maxWidth: "800px",
+                    margin: "30px auto",
+                    padding: "20px",
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: "12px",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "14px",
+                      color: "#666",
+                      marginBottom: "12px",
+                      fontWeight: "500",
+                    }}
+                  >
                     Request changes or refinements:
                   </p>
                   <textarea
@@ -305,10 +323,32 @@ export default function Home() {
                     </button>
                   </div>
                 </div>
+
+                <div style={{ textAlign: "center", marginTop: "30px" }}>
+                  <button
+                    onClick={handleConfirmSchedule}
+                    disabled={isRunning || scheduleData.length === 0}
+                    style={{
+                      padding: "16px 48px",
+                      fontSize: "16px",
+                      fontWeight: "700",
+                      color: "#fff",
+                      backgroundColor: isRunning || scheduleData.length === 0 ? "#999" : "#34C759",
+                      border: "none",
+                      borderRadius: "12px",
+                      cursor: isRunning || scheduleData.length === 0 ? "not-allowed" : "pointer",
+                      transition: "all 0.2s ease",
+                      boxShadow: "0 4px 12px rgba(52, 199, 89, 0.3)",
+                    }}
+                  >
+                    ✓ Confirm & Save Schedule
+                  </button>
+                </div>
               </>
             )}
           </div>
         );
+
       default:
         return null;
     }
