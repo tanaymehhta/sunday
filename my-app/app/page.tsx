@@ -19,7 +19,9 @@ import ScheduleTable, { ScheduleEntry } from "@/components/ScheduleTable";
 export default function Home() {
   const [activeTab, setActiveTab] = useState("record");
   const [isRunning, setIsRunning] = useState(false);
-  const [conversationHistory, setConversationHistory] = useState<ConversationMessage[]>([]);
+  const [conversationHistory, setConversationHistory] = useState<
+    ConversationMessage[]
+  >([]);
   const [scheduleData, setScheduleData] = useState<ScheduleEntry[]>([]);
   const [userInput, setUserInput] = useState("");
   const [hasInitialResponse, setHasInitialResponse] = useState(false);
@@ -87,7 +89,9 @@ export default function Home() {
         setTimeout(() => setShowSuccess(false), 2000);
       } catch (error) {
         console.error("Error calling Gemini API:", error);
-        alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+        alert(
+          `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
       } finally {
         setIsRunning(false);
       }
@@ -126,7 +130,9 @@ export default function Home() {
         setTimeout(() => setShowSuccess(false), 2000);
       } catch (error) {
         console.error("Error calling Gemini API:", error);
-        alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+        alert(
+          `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
       } finally {
         setIsRunning(false);
       }
@@ -146,7 +152,9 @@ export default function Home() {
       alert("✓ Schedule confirmed and saved successfully!");
     } catch (error) {
       console.error("Error saving schedule:", error);
-      alert(`Error saving schedule: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(
+        `Error saving schedule: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   };
 
@@ -171,17 +179,6 @@ export default function Home() {
             />
           </>
         );
-
-      case "tasks":
-        return (
-          <div style={{ padding: "40px 24px", textAlign: "center" }}>
-            <h1 className="title">Tasks</h1>
-            <p className="subtitle" style={{ marginTop: "20px" }}>
-              Task management will be implemented here
-            </p>
-          </div>
-        );
-
       case "insights":
         return (
           <div style={{ padding: "40px 24px", textAlign: "center" }}>
@@ -194,8 +191,16 @@ export default function Home() {
 
       case "confirm":
         return (
-          <div style={{ padding: "20px 24px 100px", minHeight: "calc(100vh - 80px)" }}>
-            <h1 className="title" style={{ textAlign: "center", marginBottom: "20px" }}>
+          <div
+            style={{
+              padding: "20px 24px 100px",
+              minHeight: "calc(100vh - 80px)",
+            }}
+          >
+            <h1
+              className="title"
+              style={{ textAlign: "center", marginBottom: "20px" }}
+            >
               Schedule Confirmation
             </h1>
 
@@ -218,7 +223,9 @@ export default function Home() {
                 }}
               >
                 <span style={{ fontSize: "18px" }}>✓</span>
-                <span style={{ fontWeight: "600", fontSize: "14px" }}>Schedule Updated</span>
+                <span style={{ fontWeight: "600", fontSize: "14px" }}>
+                  Schedule Updated
+                </span>
               </div>
             )}
 
@@ -295,10 +302,14 @@ export default function Home() {
                         fontSize: "14px",
                         fontWeight: "600",
                         color: "#fff",
-                        backgroundColor: isRunning || !userInput.trim() ? "#999" : "#007AFF",
+                        backgroundColor:
+                          isRunning || !userInput.trim() ? "#999" : "#007AFF",
                         border: "none",
                         borderRadius: "8px",
-                        cursor: isRunning || !userInput.trim() ? "not-allowed" : "pointer",
+                        cursor:
+                          isRunning || !userInput.trim()
+                            ? "not-allowed"
+                            : "pointer",
                         transition: "all 0.2s ease",
                       }}
                     >
@@ -333,10 +344,16 @@ export default function Home() {
                       fontSize: "16px",
                       fontWeight: "700",
                       color: "#fff",
-                      backgroundColor: isRunning || scheduleData.length === 0 ? "#999" : "#34C759",
+                      backgroundColor:
+                        isRunning || scheduleData.length === 0
+                          ? "#999"
+                          : "#34C759",
                       border: "none",
                       borderRadius: "12px",
-                      cursor: isRunning || scheduleData.length === 0 ? "not-allowed" : "pointer",
+                      cursor:
+                        isRunning || scheduleData.length === 0
+                          ? "not-allowed"
+                          : "pointer",
                       transition: "all 0.2s ease",
                       boxShadow: "0 4px 12px rgba(52, 199, 89, 0.3)",
                     }}

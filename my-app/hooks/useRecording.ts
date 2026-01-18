@@ -62,7 +62,20 @@ export const useRecording = (): UseRecordingReturn => {
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      
+      // Use a format that's widely supported across browsers
+      let mimeType = 'audio/webm';
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mimeType = 'audio/mp4';
+      } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+        mimeType = 'audio/ogg;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/wav')) {
+        mimeType = 'audio/wav';
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -155,6 +168,13 @@ export const useRecording = (): UseRecordingReturn => {
     currentAudioRef.current = audio;
     setCurrentlyPlaying(id);
 
+    audio.onerror = (e) => {
+      console.error('Audio playback error:', e);
+      alert('Unable to play recording. The audio format may not be supported by your browser.');
+      setCurrentlyPlaying(null);
+      currentAudioRef.current = null;
+    };
+
     audio.ontimeupdate = () => {
       const progress = (audio.currentTime / audio.duration) * 100;
       const progressBar = document.querySelector(`[data-id="${id}"] .progress-fill`) as HTMLElement;
@@ -168,7 +188,12 @@ export const useRecording = (): UseRecordingReturn => {
       currentAudioRef.current = null;
     };
 
-    audio.play();
+    audio.play().catch((err) => {
+      console.error('Failed to play audio:', err);
+      alert('Failed to play recording. Please try again.');
+      setCurrentlyPlaying(null);
+      currentAudioRef.current = null;
+    });
   }, [recordings, currentlyPlaying]);
 
   const deleteRecording = useCallback(async (id: string) => {
