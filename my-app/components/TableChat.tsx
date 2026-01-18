@@ -1,4 +1,5 @@
 import { GEMINI_INPUT_JSON_TEXT } from "../hooks/geminiInput";
+import { ScheduleEntry, PendingSchedule, ApprovedSchedule } from "@/types/schedule";
 
 export const GEMINI_MODEL = "gemini-2.5-flash";
 
@@ -112,7 +113,7 @@ export function extractTextFromGeminiResponse(data: GeminiGenerateContentRespons
 	return texts.join("\n").trim();
 }
 
-// Type for saved schedule
+// Type for saved schedule (legacy - keeping for backwards compatibility)
 export type SavedSchedule = {
 	id: string;
 	date: string;
@@ -125,6 +126,189 @@ export type SavedSchedule = {
 	conversationHistory: ConversationMessage[];
 	savedAt: string;
 };
+
+// ===== NEW PENDING/APPROVED SCHEDULE STORAGE =====
+
+// Save pending schedule (entries waiting in confirm tab)
+export function savePendingSchedule(
+	entries: ScheduleEntry[],
+	conversationHistory: ConversationMessage[]
+): PendingSchedule {
+	const pendingSchedule: PendingSchedule = {
+		id: `pending_${Date.now()}`,
+		date: new Date().toISOString().split("T")[0],
+		entries,
+		conversationHistory,
+		createdAt: new Date().toISOString(),
+	};
+
+	try {
+		localStorage.setItem("pendingSchedule", JSON.stringify(pendingSchedule));
+		console.log("Pending schedule saved:", pendingSchedule);
+		return pendingSchedule;
+	} catch (error) {
+		console.error("Failed to save pending schedule:", error);
+		throw new Error("Failed to save pending schedule");
+	}
+}
+
+// Get current pending schedule
+export function getPendingSchedule(): PendingSchedule | null {
+	try {
+		const stored = localStorage.getItem("pendingSchedule");
+		if (!stored) return null;
+		return JSON.parse(stored) as PendingSchedule;
+	} catch (error) {
+		console.error("Failed to load pending schedule:", error);
+		return null;
+	}
+}
+
+// Update a specific entry in pending schedule
+export function updatePendingEntry(entryId: string, updates: Partial<ScheduleEntry>): void {
+	try {
+		const pending = getPendingSchedule();
+		if (!pending) return;
+
+		pending.entries = pending.entries.map(entry =>
+			entry.id === entryId ? { ...entry, ...updates } : entry
+		);
+
+		localStorage.setItem("pendingSchedule", JSON.stringify(pending));
+		console.log("Pending entry updated:", entryId);
+	} catch (error) {
+		console.error("Failed to update pending entry:", error);
+		throw new Error("Failed to update pending entry");
+	}
+}
+
+// Remove entry from pending schedule (when approved or deleted)
+export function removePendingEntry(entryId: string): void {
+	try {
+		const pending = getPendingSchedule();
+		if (!pending) return;
+
+		pending.entries = pending.entries.filter(entry => entry.id !== entryId);
+
+		if (pending.entries.length === 0) {
+			// If no entries left, clear the pending schedule
+			localStorage.removeItem("pendingSchedule");
+		} else {
+			localStorage.setItem("pendingSchedule", JSON.stringify(pending));
+		}
+		console.log("Pending entry removed:", entryId);
+	} catch (error) {
+		console.error("Failed to remove pending entry:", error);
+		throw new Error("Failed to remove pending entry");
+	}
+}
+
+// Save approved schedule entry (moves to insights tab)
+export function saveApprovedEntry(entry: ScheduleEntry): ApprovedSchedule {
+	const approvedEntry: ApprovedSchedule = {
+		id: `approved_${Date.now()}`,
+		entryId: entry.id,
+		date: new Date().toISOString().split("T")[0],
+		start_time: entry.start_time,
+		end_time: entry.end_time,
+		description: entry.description,
+		note: entry.note,
+		approvedAt: new Date().toISOString(),
+	};
+
+	try {
+		const existing = getApprovedSchedules();
+		existing.push(approvedEntry);
+		localStorage.setItem("approvedSchedules", JSON.stringify(existing));
+		console.log("Approved entry saved:", approvedEntry);
+		return approvedEntry;
+	} catch (error) {
+		console.error("Failed to save approved entry:", error);
+		throw new Error("Failed to save approved entry");
+	}
+}
+
+// Get all approved schedules
+export function getApprovedSchedules(): ApprovedSchedule[] {
+	try {
+		const stored = localStorage.getItem("approvedSchedules");
+		if (!stored) return [];
+		return JSON.parse(stored) as ApprovedSchedule[];
+	} catch (error) {
+		console.error("Failed to load approved schedules:", error);
+		return [];
+	}
+}
+
+// Delete approved entry by id
+export function deleteApprovedEntry(id: string): void {
+	try {
+		const schedules = getApprovedSchedules();
+		const filtered = schedules.filter((s) => s.id !== id);
+		localStorage.setItem("approvedSchedules", JSON.stringify(filtered));
+	} catch (error) {
+		console.error("Failed to delete approved entry:", error);
+		throw new Error("Failed to delete approved entry");
+	}
+}
+
+// Correct a single entry using Gemini API
+export async function correctScheduleEntry(
+	entry: ScheduleEntry,
+	correctionText: string,
+	conversationHistory: ConversationMessage[]
+): Promise<ScheduleEntry> {
+	try {
+		const systemPrompt = `You are correcting a single schedule entry based on user feedback.
+
+Original entry:
+- Time: ${entry.start_time} - ${entry.end_time}
+- Description: ${entry.description}
+${entry.note ? `- Note: ${entry.note}` : ''}
+
+User correction: ${correctionText}
+
+Return ONLY a valid JSON object (not an array) with the corrected entry in this exact format:
+{"start_time": "HH:mm AM/PM", "end_time": "HH:mm AM/PM", "description": "...", "note": "..."}
+
+Rules:
+- Use 12-hour format for times
+- Be concise in descriptions
+- If the user mentions additional context, put it in the note field
+- Return ONLY the JSON object, no markdown, no code blocks`;
+
+		const response = await callGeminiGenerateContent({
+			systemPrompt,
+			userText: correctionText,
+			conversationHistory: conversationHistory.slice(-4), // Keep last 2 exchanges for context
+		});
+
+		const text = extractTextFromGeminiResponse(response);
+		console.log("Gemini correction response:", text);
+
+		// Parse the corrected entry
+		let cleanText = text.trim();
+		cleanText = cleanText.replace(/```json\n?/g, "");
+		cleanText = cleanText.replace(/```\n?/g, "");
+		cleanText = cleanText.trim();
+
+		const corrected = JSON.parse(cleanText);
+
+		// Return updated entry with same id and status reset to pending
+		return {
+			...entry,
+			start_time: corrected.start_time || entry.start_time,
+			end_time: corrected.end_time || entry.end_time,
+			description: corrected.description || entry.description,
+			note: corrected.note || entry.note,
+			status: 'pending',
+			rejectionReason: undefined,
+		};
+	} catch (error) {
+		console.error("Failed to correct entry:", error);
+		throw new Error(`Failed to correct entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
+	}
+}
 
 // Save confirmed schedule to localStorage
 export function saveConfirmedSchedule(

@@ -32,7 +32,7 @@ const RecordingsList: React.FC<RecordingsListProps> = ({
         </h2>
         {todayRecordings.length > 0 && (
           <button className="extract-button" onClick={onExtract}>
-            ✨ Extract Tasks ›
+            ✨ Create Schedule ›
           </button>
         )}
       </div>
