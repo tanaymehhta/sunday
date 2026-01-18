@@ -1,0 +1,10 @@
+{
+  "name": "sunday",
+  "version": "1.0.0",
+  "description": "Voice recording app for capturing activities",
+  "scripts": {
+    "start": "npx serve .",
+    "dev": "npx serve ."
+  },
+  "private": true
+}
