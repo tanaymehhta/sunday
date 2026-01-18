@@ -3,8 +3,21 @@
   "version": "1.0.0",
   "description": "Voice recording app for capturing activities",
   "scripts": {
-    "start": "npx serve .",
-    "dev": "npx serve ."
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^15.1.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.6",
+    "@types/react-dom": "^19.0.2",
+    "typescript": "^5.7.2"
   },
   "private": true
 }
