@@ -285,14 +285,16 @@ body {
 
 .tab-bar {
   position: fixed;
-  bottom: 30px;
-  left: 24px;
-  right: 24px;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   background: #141414;
-  border-radius: 24px;
-  padding: 8px;
-  border: 1px solid #222;
+  border-radius: 0;
+  padding: 12px 24px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid #222;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .tab {

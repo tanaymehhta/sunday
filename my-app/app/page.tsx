@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import RecordButton from "@/components/RecordButton";
 import UploadButton from "@/components/UploadButton";
@@ -12,9 +12,19 @@ import {
   extractTextFromGeminiResponse,
   ConversationMessage,
   saveConfirmedSchedule,
+  savePendingSchedule,
+  getPendingSchedule,
+  updatePendingEntry,
+  removePendingEntry,
+  saveApprovedEntry,
+  getApprovedSchedules,
+  correctScheduleEntry,
 } from "@/components/TableChat";
 import { GEMINI_INPUT_JSON_TEXT } from "@/hooks/geminiInput";
-import ScheduleTable, { ScheduleEntry } from "@/components/ScheduleTable";
+import { ScheduleEntry } from "@/types/schedule";
+import { formatRecordingsForGemini, hasValidTranscriptions } from "@/hooks/formatRecordings";
+import ScheduleTable from "@/components/ScheduleTable";
+import Insights from "@/components/Insights";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("record");
@@ -26,6 +36,7 @@ export default function Home() {
   const [userInput, setUserInput] = useState("");
   const [hasInitialResponse, setHasInitialResponse] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isCorrecting, setIsCorrecting] = useState(false);
 
   const {
     isRecording,
@@ -39,8 +50,27 @@ export default function Home() {
     uploadRecording,
   } = useRecording();
 
+  // Load pending schedule on mount and when switching to confirm tab
+  useEffect(() => {
+    if (activeTab === "confirm") {
+      const pending = getPendingSchedule();
+      if (pending) {
+        setScheduleData(pending.entries);
+        setConversationHistory(pending.conversationHistory);
+        setHasInitialResponse(true);
+      }
+    }
+  }, [activeTab]);
+
   const handleExtractTasks = () => {
-    alert("Task extraction will be implemented with backend API");
+    // Check if there are valid transcriptions
+    if (!hasValidTranscriptions(recordings)) {
+      alert("Please transcribe your recordings first before creating a schedule.");
+      return;
+    }
+
+    // Navigate to confirm tab
+    setActiveTab("confirm");
   };
 
   const parseScheduleFromResponse = (text: string): ScheduleEntry[] => {
@@ -50,13 +80,32 @@ export default function Home() {
       cleanText = cleanText.replace(/```\n?/g, "");
       cleanText = cleanText.trim();
 
+      // Remove any non-JSON text before the array
+      const jsonStart = cleanText.indexOf('[');
+      const jsonEnd = cleanText.lastIndexOf(']');
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        cleanText = cleanText.substring(jsonStart, jsonEnd + 1);
+      }
+
+      console.log("Cleaned text for parsing:", cleanText);
+
       const parsed = JSON.parse(cleanText);
       if (Array.isArray(parsed)) {
-        return parsed;
+        // Add unique IDs and pending status to each entry
+        return parsed.map((entry, index) => ({
+          id: `entry_${Date.now()}_${index}`,
+          start_time: entry.start_time,
+          end_time: entry.end_time,
+          description: entry.description,
+          note: entry.note,
+          status: 'pending' as const,
+        }));
       }
       return [];
     } catch (error) {
       console.error("Failed to parse schedule:", error);
+      console.error("Raw text:", text);
+      alert("Failed to parse Gemini response. Check console for details.");
       return [];
     }
   };
@@ -65,8 +114,13 @@ export default function Home() {
     if (!hasInitialResponse) {
       setIsRunning(true);
       try {
+        // Use recordings data if available, otherwise fall back to static data
+        const inputText = hasValidTranscriptions(recordings)
+          ? formatRecordingsForGemini(recordings)
+          : GEMINI_INPUT_JSON_TEXT;
+
         const response = await callGeminiGenerateContent({
-          userText: GEMINI_INPUT_JSON_TEXT,
+          userText: inputText,
         });
         const text = extractTextFromGeminiResponse(response);
         console.log("Gemini API Response:", text);
@@ -77,7 +131,7 @@ export default function Home() {
         const newHistory: ConversationMessage[] = [
           {
             role: "user",
-            parts: [{ text: GEMINI_INPUT_JSON_TEXT }],
+            parts: [{ text: inputText }],
           },
           {
             role: "model",
@@ -85,9 +139,11 @@ export default function Home() {
           },
         ];
         setConversationHistory(newHistory);
+
+        // Save to pending schedule storage
+        savePendingSchedule(schedule, newHistory);
+
         setHasInitialResponse(true);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 2000);
       } catch (error) {
         console.error("Error calling Gemini API:", error);
         alert(
@@ -126,6 +182,10 @@ export default function Home() {
           },
         ];
         setConversationHistory(newHistory);
+
+        // Save to pending schedule storage
+        savePendingSchedule(schedule, newHistory);
+
         setUserInput("");
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 2000);
@@ -151,11 +211,91 @@ export default function Home() {
     try {
       saveConfirmedSchedule(scheduleData, conversationHistory);
       alert("✓ Schedule confirmed and saved successfully!");
+      // Navigate to insights tab
+      setActiveTab("insights");
     } catch (error) {
       console.error("Error saving schedule:", error);
       alert(
         `Error saving schedule: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
+    }
+  };
+
+  // Handle approving an entry (move to insights)
+  const handleApproveEntry = (entryId: string) => {
+    try {
+      const entry = scheduleData.find(e => e.id === entryId);
+      if (!entry) return;
+
+      // Save to approved schedules
+      saveApprovedEntry(entry);
+
+      // Remove from pending
+      removePendingEntry(entryId);
+
+      // Update local state
+      setScheduleData(prev => prev.filter(e => e.id !== entryId));
+
+      // Show success
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+
+      // If no more entries, clear the state
+      if (scheduleData.length === 1) {
+        setHasInitialResponse(false);
+        setConversationHistory([]);
+      }
+    } catch (error) {
+      console.error("Error approving entry:", error);
+      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  };
+
+  // Handle rejecting an entry (stays in confirm tab for correction)
+  const handleRejectEntry = (entryId: string) => {
+    try {
+      // Update entry status to rejected
+      updatePendingEntry(entryId, { status: 'rejected' });
+
+      // Update local state
+      setScheduleData(prev =>
+        prev.map(e => e.id === entryId ? { ...e, status: 'rejected' as const } : e)
+      );
+    } catch (error) {
+      console.error("Error rejecting entry:", error);
+      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    }
+  };
+
+  // Handle correcting an entry
+  const handleCorrectEntry = async (entryId: string, correctionText: string) => {
+    try {
+      setIsCorrecting(true);
+      const entry = scheduleData.find(e => e.id === entryId);
+      if (!entry) return;
+
+      // Call Gemini to correct the entry
+      const correctedEntry = await correctScheduleEntry(
+        entry,
+        correctionText,
+        conversationHistory
+      );
+
+      // Update pending storage
+      updatePendingEntry(entryId, correctedEntry);
+
+      // Update local state
+      setScheduleData(prev =>
+        prev.map(e => e.id === entryId ? correctedEntry : e)
+      );
+
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+    } catch (error) {
+      console.error("Error correcting entry:", error);
+      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsCorrecting(false);
     }
   };
 
@@ -184,14 +324,118 @@ export default function Home() {
           </>
         );
       case "insights":
+        const approvedSchedules = getApprovedSchedules();
         return (
-          <div style={{ padding: "40px 24px", textAlign: "center" }}>
-            <h1 className="title">Insights</h1>
-            <p className="subtitle" style={{ marginTop: "20px" }}>
-              Analytics and insights will be displayed here
-            </p>
+          <div style={{ padding: "20px 24px 100px", minHeight: "calc(100vh - 80px)" }}>
+            <h1 className="title" style={{ textAlign: "center", marginBottom: "20px" }}>
+              Insights
+            </h1>
+            {approvedSchedules.length === 0 ? (
+              <div style={{ padding: "40px 24px", textAlign: "center" }}>
+                <p className="subtitle" style={{ marginTop: "20px", color: "#999" }}>
+                  No approved schedules yet.
+                  <br />
+                  Approve entries from the Confirm tab to see them here.
+                </p>
+              </div>
+            ) : (
+              <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+                <p style={{
+                  fontSize: "14px",
+                  color: "#666",
+                  marginBottom: "16px",
+                  textAlign: "center"
+                }}>
+                  {approvedSchedules.length} approved {approvedSchedules.length === 1 ? 'entry' : 'entries'}
+                </p>
+                <table style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  backgroundColor: "#fff",
+                  borderRadius: "12px",
+                  overflow: "hidden",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#34C759", color: "#fff" }}>
+                      <th style={{
+                        padding: "16px",
+                        textAlign: "left",
+                        fontWeight: "600",
+                        fontSize: "14px",
+                        width: "100px",
+                      }}>
+                        Date
+                      </th>
+                      <th style={{
+                        padding: "16px",
+                        textAlign: "left",
+                        fontWeight: "600",
+                        fontSize: "14px",
+                        width: "180px",
+                      }}>
+                        Time
+                      </th>
+                      <th style={{
+                        padding: "16px",
+                        textAlign: "left",
+                        fontWeight: "600",
+                        fontSize: "14px",
+                      }}>
+                        Activity
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {approvedSchedules.map((entry, index) => (
+                      <tr
+                        key={entry.id}
+                        style={{
+                          borderBottom: index < approvedSchedules.length - 1 ? "1px solid #eee" : "none",
+                        }}
+                      >
+                        <td style={{
+                          padding: "14px 16px",
+                          fontSize: "13px",
+                          color: "#666",
+                        }}>
+                          {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </td>
+                        <td style={{
+                          padding: "14px 16px",
+                          fontSize: "14px",
+                          color: "#333",
+                          fontWeight: "500",
+                        }}>
+                          {entry.start_time} - {entry.end_time}
+                        </td>
+                        <td style={{
+                          padding: "14px 16px",
+                          fontSize: "14px",
+                          color: "#666",
+                        }}>
+                          <div>{entry.description}</div>
+                          {entry.note && (
+                            <div style={{
+                              fontSize: "12px",
+                              color: "#999",
+                              marginTop: "4px",
+                              fontStyle: "italic",
+                            }}>
+                              Note: {entry.note}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         );
+      case "insights2":
+        return <Insights />;
 
       case "confirm":
         return (
@@ -233,11 +477,65 @@ export default function Home() {
               </div>
             )}
 
+            {isCorrecting && (
+              <div
+                style={{
+                  position: "fixed",
+                  top: "20px",
+                  right: "20px",
+                  backgroundColor: "#007AFF",
+                  color: "#fff",
+                  padding: "12px 20px",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                  zIndex: 1000,
+                }}
+              >
+                <span style={{ fontSize: "14px" }}>Processing correction...</span>
+              </div>
+            )}
+
             {!hasInitialResponse ? (
               <div style={{ textAlign: "center", marginTop: "40px" }}>
-                <p className="subtitle" style={{ marginBottom: "30px" }}>
+                <p className="subtitle" style={{ marginBottom: "20px" }}>
                   Generate your daily schedule from voice transcripts
                 </p>
+                {hasValidTranscriptions(recordings) ? (
+                  <div
+                    style={{
+                      backgroundColor: "#e8f5e9",
+                      padding: "16px",
+                      borderRadius: "8px",
+                      marginBottom: "20px",
+                      maxWidth: "500px",
+                      margin: "0 auto 20px",
+                    }}
+                  >
+                    <p style={{ fontSize: "14px", color: "#2e7d32", margin: 0 }}>
+                      ✓ {recordings.filter(r => r.transcription &&
+                        !r.transcription.startsWith('Transcription failed') &&
+                        r.transcription !== 'No speech detected').length} recording(s) with transcriptions ready
+                    </p>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      backgroundColor: "#fff3e0",
+                      padding: "16px",
+                      borderRadius: "8px",
+                      marginBottom: "20px",
+                      maxWidth: "500px",
+                      margin: "0 auto 20px",
+                    }}
+                  >
+                    <p style={{ fontSize: "14px", color: "#e65100", margin: 0 }}>
+                      No recordings with transcriptions found. Using sample data.
+                    </p>
+                  </div>
+                )}
                 <button
                   onClick={handleRunGemini}
                   disabled={isRunning}
@@ -258,7 +556,13 @@ export default function Home() {
               </div>
             ) : (
               <>
-                <ScheduleTable entries={scheduleData} />
+                <ScheduleTable
+                  entries={scheduleData}
+                  onApprove={handleApproveEntry}
+                  onReject={handleRejectEntry}
+                  onCorrect={handleCorrectEntry}
+                  showActions={true}
+                />
 
                 <div
                   style={{
