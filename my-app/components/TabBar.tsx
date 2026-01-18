@@ -14,7 +14,8 @@ interface TabBarProps {
 const tabs: Tab[] = [
   { id: 'record', icon: '🎙️', label: 'Record' },
   { id: 'tasks', icon: '📋', label: 'Tasks' },
-  { id: 'insights', icon: '📊', label: 'Insights' }
+  { id: 'confirm', icon: '✅', label: 'Confirm' }
+  ,{ id: 'insights', icon: '📊', label: 'Insights' }
 ];
 
 const TabBar: React.FC<TabBarProps> = ({ activeTab, onTabChange }) => {

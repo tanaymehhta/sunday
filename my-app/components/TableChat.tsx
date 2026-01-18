@@ -1,0 +1,119 @@
+import { GEMINI_INPUT_JSON_TEXT } from "../hooks/geminiInput";
+
+export const GEMINI_MODEL = "gemini-2.5-flash";
+
+// Try common env sources; you can replace this later
+export const getGeminiApiKey = (): string => {
+	const candidates = [
+		// Preferred: Next.js client-exposed env var
+		typeof process !== "undefined" ? (process.env.NEXT_PUBLIC_GEMINI_API_KEY as string | undefined) : undefined,
+		// Fallbacks for manual/global injection
+		(globalThis as any).__GEMINI_API_KEY__,
+		(globalThis as any).GEMINI_API_KEY,
+		// Other environments (e.g., Vite) as a last resort
+		typeof import.meta !== "undefined" ? (import.meta as any).env?.VITE_GEMINI_API_KEY : undefined,
+		// In case someone sets it on global process env with the NEXT_PUBLIC prefix
+		(globalThis as any).process?.env?.NEXT_PUBLIC_GEMINI_API_KEY,
+	];
+	return candidates.find(Boolean) || "";
+};
+
+type GeminiGenerateContentResponse = {
+	candidates?: Array<{
+		content?: { parts?: Array<{ text?: string }> };
+		finishReason?: string;
+	}>;
+};
+
+export type ConversationMessage = {
+	role: "user" | "model";
+	parts: Array<{ text: string }>;
+};
+
+// Core call to Gemini's generateContent REST API (no SDK needed)
+export async function callGeminiGenerateContent(options?: {
+	apiKey?: string;
+	model?: string;
+	systemPrompt?: string;
+	userText?: string;
+	conversationHistory?: ConversationMessage[];
+}): Promise<GeminiGenerateContentResponse> {
+	const apiKey = options?.apiKey || getGeminiApiKey();
+	if (!apiKey) throw new Error("Missing Gemini API key");
+
+	const model = options?.model || GEMINI_MODEL;
+	const systemPrompt =
+		options?.systemPrompt ||
+		`You are a time tracking assistant. Convert the following voice note transcripts into a structured daily schedule.
+
+Rules:
+1. Return ONLY valid JSON - no markdown, no code blocks, no explanations
+2. Each entry must have: start_time, end_time, description
+3. Use 24-hour format for times (HH:mm)
+4. Infer end times from the next activity's start time
+5. Group similar activities together
+6. Be concise in descriptions
+
+Example format:
+[
+  {"start_time": "07:34", "end_time": "07:41", "description": "Morning work session"},
+  {"start_time": "07:41", "end_time": "08:40", "description": "Breakfast"}
+]`;
+	
+	const userText = options?.userText || GEMINI_INPUT_JSON_TEXT;
+
+	const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+		model
+	)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+	// Build conversation contents
+	const contents: ConversationMessage[] = [];
+	
+	// Add system prompt as first user message
+	if (!options?.conversationHistory || options.conversationHistory.length === 0) {
+		contents.push({
+			role: "user",
+			parts: [{ text: systemPrompt }, { text: userText }],
+		});
+	} else {
+		// If we have conversation history, include it
+		contents.push(...options.conversationHistory);
+		// Add the new user message
+		if (userText !== GEMINI_INPUT_JSON_TEXT) {
+			contents.push({
+				role: "user",
+				parts: [{ text: userText }],
+			});
+		}
+	}
+
+	const body = {
+		contents,
+	};
+
+	const res = await fetch(url, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+	});
+
+	if (!res.ok) {
+		const text = await res.text().catch(() => "");
+		throw new Error(`Gemini API error ${res.status}: ${text}`);
+	}
+
+	return (await res.json()) as GeminiGenerateContentResponse;
+}
+
+// Helper: pull plain text from the Gemini response
+export function extractTextFromGeminiResponse(data: GeminiGenerateContentResponse): string {
+	const parts = data?.candidates?.flatMap((c) => c.content?.parts || []) || [];
+	const texts = parts.map((p) => p.text).filter(Boolean) as string[];
+	return texts.join("\n").trim();
+}
+
+// Optional placeholder component; wire up as needed
+export default function TableChat() {
+	return null;
+}
+
