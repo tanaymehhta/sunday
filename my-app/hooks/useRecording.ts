@@ -1,11 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Recording } from '@/types/recording';
+import { storage } from '@/lib/storage';
 
 interface UseRecordingReturn {
   isRecording: boolean;
   recordings: Recording[];
   recordHint: string;
   currentlyPlaying: string | null;
+  isLoading: boolean;
   startRecording: () => Promise<void>;
   stopRecording: () => void;
   toggleRecording: () => void;
@@ -19,11 +21,12 @@ export const useRecording = (): UseRecordingReturn => {
   const [recordings, setRecordings] = useState<Recording[]>([]);
   const [recordHint, setRecordHint] = useState('Tap to start recording your activity');
   const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingStartTimeRef = useRef<number | null>(null);
-  const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const formatDuration = (ms: number): string => {
@@ -32,6 +35,29 @@ export const useRecording = (): UseRecordingReturn => {
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
+
+  // Load recordings from storage on mount
+  useEffect(() => {
+    const loadRecordings = async () => {
+      try {
+        const stored = await storage.getRecordings();
+        setRecordings(stored.map(r => ({
+          id: r.id,
+          url: r.url,
+          timestamp: r.timestamp,
+          duration: r.duration,
+          transcription: r.transcription,
+          audioBlob: r.audioBlob,
+        })));
+      } catch (error) {
+        console.error('Failed to load recordings:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadRecordings();
+  }, []);
 
   const startRecording = useCallback(async () => {
     try {
@@ -44,17 +70,32 @@ export const useRecording = (): UseRecordingReturn => {
         audioChunksRef.current.push(e.data);
       };
 
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const audioUrl = URL.createObjectURL(audioBlob);
         const duration = Date.now() - (recordingStartTimeRef.current || Date.now());
+        const id = Date.now().toString();
+        const timestamp = new Date();
 
         const newRecording: Recording = {
-          id: Date.now().toString(),
+          id,
           url: audioUrl,
-          timestamp: new Date(),
-          duration: duration
+          timestamp,
+          duration,
+          audioBlob,
         };
+
+        // Save to IndexedDB
+        try {
+          await storage.saveRecording({
+            id,
+            audioBlob,
+            duration,
+            created_at: timestamp.toISOString(),
+          });
+        } catch (error) {
+          console.error('Failed to save recording to storage:', error);
+        }
 
         setRecordings(prev => [newRecording, ...prev]);
         stream.getTracks().forEach(track => track.stop());
@@ -130,7 +171,14 @@ export const useRecording = (): UseRecordingReturn => {
     audio.play();
   }, [recordings, currentlyPlaying]);
 
-  const deleteRecording = useCallback((id: string) => {
+  const deleteRecording = useCallback(async (id: string) => {
+    // Delete from IndexedDB
+    try {
+      await storage.deleteRecording(id);
+    } catch (error) {
+      console.error('Failed to delete recording from storage:', error);
+    }
+
     setRecordings(prev => prev.filter(r => r.id !== id));
     if (currentlyPlaying === id && currentAudioRef.current) {
       currentAudioRef.current.pause();
@@ -154,11 +202,14 @@ export const useRecording = (): UseRecordingReturn => {
       (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
+      const transcription = 'Speech recognition not supported in this browser';
       setRecordings(prev => prev.map(r =>
         r.id === id
-          ? { ...r, isTranscribing: false, transcription: 'Speech recognition not supported in this browser' }
+          ? { ...r, isTranscribing: false, transcription }
           : r
       ));
+      // Save to storage
+      storage.updateRecording(id, { transcription }).catch(console.error);
       return;
     }
 
@@ -181,28 +232,34 @@ export const useRecording = (): UseRecordingReturn => {
     };
 
     recognition.onend = () => {
+      const transcription = transcribedText.trim() || 'No speech detected';
       setRecordings(prev => prev.map(r =>
         r.id === id
           ? {
               ...r,
               isTranscribing: false,
-              transcription: transcribedText.trim() || 'No speech detected'
+              transcription,
             }
           : r
       ));
+      // Save transcription to storage
+      storage.updateRecording(id, { transcription }).catch(console.error);
     };
 
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
+      const transcription = `Transcription failed: ${event.error}`;
       setRecordings(prev => prev.map(r =>
         r.id === id
           ? {
               ...r,
               isTranscribing: false,
-              transcription: `Transcription failed: ${event.error}`
+              transcription,
             }
           : r
       ));
+      // Save error to storage
+      storage.updateRecording(id, { transcription }).catch(console.error);
     };
 
     // Start recognition when audio plays
@@ -225,11 +282,13 @@ export const useRecording = (): UseRecordingReturn => {
     // Play the audio to trigger transcription
     audio.play().catch(err => {
       console.error('Failed to play audio:', err);
+      const transcription = 'Failed to play audio for transcription';
       setRecordings(prev => prev.map(r =>
         r.id === id
-          ? { ...r, isTranscribing: false, transcription: 'Failed to play audio for transcription' }
+          ? { ...r, isTranscribing: false, transcription }
           : r
       ));
+      storage.updateRecording(id, { transcription }).catch(console.error);
     });
   }, [recordings]);
 
@@ -250,6 +309,7 @@ export const useRecording = (): UseRecordingReturn => {
     recordings,
     recordHint,
     currentlyPlaying,
+    isLoading,
     startRecording,
     stopRecording,
     toggleRecording,
