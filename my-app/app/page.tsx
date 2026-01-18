@@ -3,9 +3,9 @@
 import React, { useState } from "react";
 import Header from "@/components/Header";
 import RecordButton from "@/components/RecordButton";
+import UploadButton from "@/components/UploadButton";
 import RecordingsList from "@/components/RecordingsList";
 import TabBar from "@/components/TabBar";
-import VoiceToText from "@/components/VoiceToText";
 import { useRecording } from "@/hooks/useRecording";
 import {
   callGeminiGenerateContent,
@@ -36,6 +36,7 @@ export default function Home() {
     playRecording,
     deleteRecording,
     transcribeRecording,
+    uploadRecording,
   } = useRecording();
 
   const handleExtractTasks = () => {
@@ -164,11 +165,14 @@ export default function Home() {
         return (
           <>
             <Header />
-            <RecordButton
-              isRecording={isRecording}
-              recordHint={recordHint}
-              onToggleRecording={toggleRecording}
-            />
+            <div className="record-controls">
+              <RecordButton
+                isRecording={isRecording}
+                recordHint={recordHint}
+                onToggleRecording={toggleRecording}
+              />
+              <UploadButton onUpload={uploadRecording} />
+            </div>
             <RecordingsList
               recordings={recordings}
               currentlyPlaying={currentlyPlaying}

@@ -14,6 +14,7 @@ interface UseRecordingReturn {
   playRecording: (id: string) => void;
   deleteRecording: (id: string) => void;
   transcribeRecording: (id: string) => Promise<void>;
+  uploadRecording: (file: File) => Promise<void>;
 }
 
 export const useRecording = (): UseRecordingReturn => {
@@ -283,6 +284,55 @@ export const useRecording = (): UseRecordingReturn => {
     }
   }, [recordings]);
 
+  const uploadRecording = useCallback(async (file: File) => {
+    try {
+      // Validate file type
+      if (!file.type.startsWith('audio/')) {
+        alert('Please upload an audio file');
+        return;
+      }
+
+      // Create audio element to get duration
+      const audio = new Audio();
+      const audioUrl = URL.createObjectURL(file);
+
+      await new Promise<void>((resolve, reject) => {
+        audio.onloadedmetadata = () => resolve();
+        audio.onerror = () => reject(new Error('Failed to load audio file'));
+        audio.src = audioUrl;
+      });
+
+      const duration = audio.duration * 1000; // Convert to milliseconds
+      const id = Date.now().toString();
+      const timestamp = new Date();
+
+      const newRecording: Recording = {
+        id,
+        url: audioUrl,
+        timestamp,
+        duration,
+        audioBlob: file,
+      };
+
+      // Save to IndexedDB
+      try {
+        await storage.saveRecording({
+          id,
+          audioBlob: file,
+          duration,
+          created_at: timestamp.toISOString(),
+        });
+      } catch (error) {
+        console.error('Failed to save uploaded recording to storage:', error);
+      }
+
+      setRecordings(prev => [newRecording, ...prev]);
+    } catch (error) {
+      console.error('Failed to upload recording:', error);
+      alert('Failed to upload audio file. Please try again.');
+    }
+  }, []);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -306,6 +356,7 @@ export const useRecording = (): UseRecordingReturn => {
     toggleRecording,
     playRecording,
     deleteRecording,
-    transcribeRecording
+    transcribeRecording,
+    uploadRecording
   };
 };
