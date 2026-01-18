@@ -48,15 +48,6 @@ export default function Home() {
             />
           </>
         );
-      case "tasks":
-        return (
-          <div style={{ padding: "40px 24px", textAlign: "center" }}>
-            <h1 className="title">Tasks</h1>
-            <p className="subtitle" style={{ marginTop: "20px" }}>
-              Task management will be implemented here
-            </p>
-          </div>
-        );
       case "insights":
         return (
           <div style={{ padding: "40px 24px", textAlign: "center" }}>
