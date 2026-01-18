@@ -1,5 +1,5 @@
-import React from 'react';
-import { Recording } from '@/types/recording';
+import React from "react";
+import { Recording } from "@/types/recording";
 
 interface RecordingItemProps {
   recording: Recording;
@@ -14,29 +14,27 @@ const RecordingItem: React.FC<RecordingItemProps> = ({
   isPlaying,
   onPlay,
   onDelete,
-  onTranscribe
+  onTranscribe,
 }) => {
   const formatTime = (date: Date): string => {
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
   };
 
   const formatDuration = (ms: number): string => {
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
   return (
     <div className="recording-item" data-id={recording.id}>
-      <button
-        className="play-button"
-        onClick={() => onPlay(recording.id)}
-      >
+      <button className="play-button" onClick={() => onPlay(recording.id)}>
         {isPlaying ? (
           <div className="pause-icon">
             <div className="pause-bar"></div>
@@ -48,8 +46,12 @@ const RecordingItem: React.FC<RecordingItemProps> = ({
       </button>
       <div className="recording-info">
         <div className="recording-meta">
-          <span className="recording-time">⏱ {formatTime(recording.timestamp)}</span>
-          <span className="recording-duration">{formatDuration(recording.duration)}</span>
+          <span className="recording-time">
+            ⏱ {formatTime(recording.timestamp)}
+          </span>
+          <span className="recording-duration">
+            {formatDuration(recording.duration)}
+          </span>
           {!recording.transcription && !recording.isTranscribing && (
             <button
               className="transcribe-btn"
@@ -64,20 +66,13 @@ const RecordingItem: React.FC<RecordingItemProps> = ({
           <div className="progress-fill"></div>
         </div>
         {recording.isTranscribing && (
-          <div className="transcription-text transcribing">
-            Transcribing...
-          </div>
+          <div className="transcription-text transcribing">Transcribing...</div>
         )}
         {recording.transcription && (
-          <div className="transcription-text">
-            {recording.transcription}
-          </div>
+          <div className="transcription-text">{recording.transcription}</div>
         )}
       </div>
-      <button
-        className="delete-btn"
-        onClick={() => onDelete(recording.id)}
-      >
+      <button className="delete-btn" onClick={() => onDelete(recording.id)}>
         ×
       </button>
     </div>
