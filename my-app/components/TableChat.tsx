@@ -1,7 +1,7 @@
 import { GEMINI_INPUT_JSON_TEXT } from "../hooks/geminiInput";
 import { ScheduleEntry, PendingSchedule, ApprovedSchedule } from "@/types/schedule";
 
-export const GEMINI_MODEL = "gemini-2.5-flash";
+export const GEMINI_MODEL = "gemini-2.5-flash-lite";
 
 // Try common env sources; you can replace this later
 export const getGeminiApiKey = (): string => {
@@ -45,15 +45,13 @@ export async function callGeminiGenerateContent(options?: {
 	const model = options?.model || GEMINI_MODEL;
 	const systemPrompt =
 		options?.systemPrompt ||
-		`You are a time tracking assistant. Convert the following voice note transcripts into a structured daily schedule.
+		`You are a time tracking assistant. Convert the following voice note transcripts with time stamps of which the audio was recorded into a structured daily schedule.
 
 Rules:
 1. Return ONLY valid JSON - no markdown, no code blocks, no explanations
 2. Each entry must have: start_time, end_time, description
 3. Use 12-hour format for times (HH:mm AM/PM)
-4. Infer end times from the next activity's start time
-5. Be concise in descriptions, which should be in present tense to decribe the activity in the time block
-6. If the user's input is longer than two sentences, add a note section to summarize what was talked about. Usually this is task for the future, thoughts. No need to repeat or explain the activity.
+4. Hint: if users use past tense, the activity happened before the time stamp.
 
 Example format:
 [

@@ -20,9 +20,10 @@ import {
   correctScheduleEntry,
 } from "@/components/TableChat";
 import { GEMINI_INPUT_JSON_TEXT } from "@/hooks/geminiInput";
-import ScheduleTable from "@/components/ScheduleTable";
 import { ScheduleEntry } from "@/types/schedule";
 import { formatRecordingsForGemini, hasValidTranscriptions } from "@/hooks/formatRecordings";
+import ScheduleTable from "@/components/ScheduleTable";
+import Insights from "@/components/Insights";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("record");
@@ -77,6 +78,15 @@ export default function Home() {
       cleanText = cleanText.replace(/```\n?/g, "");
       cleanText = cleanText.trim();
 
+      // Remove any non-JSON text before the array
+      const jsonStart = cleanText.indexOf('[');
+      const jsonEnd = cleanText.lastIndexOf(']');
+      if (jsonStart !== -1 && jsonEnd !== -1) {
+        cleanText = cleanText.substring(jsonStart, jsonEnd + 1);
+      }
+
+      console.log("Cleaned text for parsing:", cleanText);
+
       const parsed = JSON.parse(cleanText);
       if (Array.isArray(parsed)) {
         // Add unique IDs and pending status to each entry
@@ -92,6 +102,8 @@ export default function Home() {
       return [];
     } catch (error) {
       console.error("Failed to parse schedule:", error);
+      console.error("Raw text:", text);
+      alert("Failed to parse Gemini response. Check console for details.");
       return [];
     }
   };
@@ -130,8 +142,6 @@ export default function Home() {
         savePendingSchedule(schedule, newHistory);
 
         setHasInitialResponse(true);
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 2000);
       } catch (error) {
         console.error("Error calling Gemini API:", error);
         alert(
@@ -199,6 +209,8 @@ export default function Home() {
     try {
       saveConfirmedSchedule(scheduleData, conversationHistory);
       alert("✓ Schedule confirmed and saved successfully!");
+      // Navigate to insights tab
+      setActiveTab("insights");
     } catch (error) {
       console.error("Error saving schedule:", error);
       alert(
@@ -417,6 +429,8 @@ export default function Home() {
             )}
           </div>
         );
+      case "insights2":
+        return <Insights />;
 
       case "confirm":
         return (
