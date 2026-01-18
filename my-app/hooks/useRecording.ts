@@ -13,7 +13,7 @@ interface UseRecordingReturn {
   toggleRecording: () => void;
   playRecording: (id: string) => void;
   deleteRecording: (id: string) => void;
-  transcribeRecording: (id: string) => void;
+  transcribeRecording: (id: string) => Promise<void>;
 }
 
 export const useRecording = (): UseRecordingReturn => {
@@ -187,7 +187,7 @@ export const useRecording = (): UseRecordingReturn => {
     }
   }, [currentlyPlaying]);
 
-  const transcribeRecording = useCallback((id: string) => {
+  const transcribeRecording = useCallback(async (id: string) => {
     const recording = recordings.find(r => r.id === id);
     if (!recording || recording.transcription || recording.isTranscribing) return;
 
@@ -196,43 +196,35 @@ export const useRecording = (): UseRecordingReturn => {
       r.id === id ? { ...r, isTranscribing: true } : r
     ));
 
-    // Check for Speech Recognition API
-    const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+    try {
+      // Get the audio blob from the recording
+      let audioBlob = recording.audioBlob;
 
-    if (!SpeechRecognition) {
-      const transcription = 'Speech recognition not supported in this browser';
-      setRecordings(prev => prev.map(r =>
-        r.id === id
-          ? { ...r, isTranscribing: false, transcription }
-          : r
-      ));
-      // Save to storage
-      storage.updateRecording(id, { transcription }).catch(console.error);
-      return;
-    }
-
-    // Create audio element to play the recording
-    const audio = new Audio(recording.url);
-    const recognition = new SpeechRecognition();
-
-    recognition.lang = 'en-US';
-    recognition.continuous = true;
-    recognition.interimResults = false;
-
-    let transcribedText = '';
-
-    recognition.onresult = (event: any) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) {
-          transcribedText += event.results[i][0].transcript + ' ';
-        }
+      // If audioBlob is not available, fetch it from the URL
+      if (!audioBlob) {
+        const response = await fetch(recording.url);
+        audioBlob = await response.blob();
       }
-    };
 
-    recognition.onend = () => {
-      const transcription = transcribedText.trim() || 'No speech detected';
+      // Create FormData with audio file and required parameters
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'recording.webm');
+
+      // Call our API route which proxies to ElevenLabs
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `Transcription failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const transcription = data.text || 'No speech detected';
+
+      // Update state with transcription
       setRecordings(prev => prev.map(r =>
         r.id === id
           ? {
@@ -242,13 +234,15 @@ export const useRecording = (): UseRecordingReturn => {
             }
           : r
       ));
+
       // Save transcription to storage
-      storage.updateRecording(id, { transcription }).catch(console.error);
-    };
+      await storage.updateRecording(id, { transcription });
 
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      const transcription = `Transcription failed: ${event.error}`;
+    } catch (error) {
+      console.error('Transcription error:', error);
+      const transcription = `Transcription failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+
+      // Update state with error
       setRecordings(prev => prev.map(r =>
         r.id === id
           ? {
@@ -258,38 +252,10 @@ export const useRecording = (): UseRecordingReturn => {
             }
           : r
       ));
+
       // Save error to storage
       storage.updateRecording(id, { transcription }).catch(console.error);
-    };
-
-    // Start recognition when audio plays
-    audio.onplay = () => {
-      try {
-        recognition.start();
-      } catch (err) {
-        console.error('Failed to start recognition:', err);
-      }
-    };
-
-    audio.onended = () => {
-      try {
-        recognition.stop();
-      } catch (err) {
-        console.error('Failed to stop recognition:', err);
-      }
-    };
-
-    // Play the audio to trigger transcription
-    audio.play().catch(err => {
-      console.error('Failed to play audio:', err);
-      const transcription = 'Failed to play audio for transcription';
-      setRecordings(prev => prev.map(r =>
-        r.id === id
-          ? { ...r, isTranscribing: false, transcription }
-          : r
-      ));
-      storage.updateRecording(id, { transcription }).catch(console.error);
-    });
+    }
   }, [recordings]);
 
   // Cleanup on unmount
