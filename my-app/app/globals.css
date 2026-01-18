@@ -294,3 +294,40 @@ body {
 .delete-btn:hover {
   color: #ef4444;
 }
+
+.transcribe-btn {
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 16px;
+  transition: transform 0.2s ease;
+}
+
+.transcribe-btn:hover {
+  transform: scale(1.2);
+  color: #7c3aed;
+}
+
+.transcription-text {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #1a1a1a;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #ccc;
+  border: 1px solid #2a2a2a;
+}
+
+.transcription-text.transcribing {
+  color: #7c3aed;
+  font-style: italic;
+  animation: pulse-text 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}

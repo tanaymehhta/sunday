@@ -3,4 +3,6 @@ export interface Recording {
   url: string;
   timestamp: Date;
   duration: number;
+  transcription?: string;
+  isTranscribing?: boolean;
 }

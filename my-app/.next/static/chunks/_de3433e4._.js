@@ -509,186 +509,6 @@ if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelper
     __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
 }
 }),
-"[project]/components/VoiceToText.tsx [app-client] (ecmascript)", ((__turbopack_context__) => {
-"use strict";
-
-__turbopack_context__.s([
-    "default",
-    ()=>__TURBOPACK__default__export__
-]);
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/jsx-dev-runtime.js [app-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/node_modules/next/dist/compiled/react/index.js [app-client] (ecmascript)");
-;
-var _s = __turbopack_context__.k.signature();
-;
-const VoiceToText = ()=>{
-    _s();
-    const [text, setText] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("");
-    const [status, setStatus] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("Click Start and begin speaking");
-    const [isRecording, setIsRecording] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
-    const mediaRecorderRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
-    const audioChunksRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])([]);
-    const recognitionRef = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRef"])(null);
-    (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])({
-        "VoiceToText.useEffect": ()=>{
-            // Detect browser speech recognition (Chrome / Edge)
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (SpeechRecognition) {
-                const recognition = new SpeechRecognition();
-                recognition.lang = "en-US";
-                recognition.continuous = false;
-                recognition.interimResults = false;
-                recognition.onresult = ({
-                    "VoiceToText.useEffect": (event)=>{
-                        const transcript = event.results[0][0].transcript;
-                        setText({
-                            "VoiceToText.useEffect": (prev)=>prev + transcript + " "
-                        }["VoiceToText.useEffect"]);
-                    }
-                })["VoiceToText.useEffect"];
-                recognition.onend = ({
-                    "VoiceToText.useEffect": ()=>{
-                        setIsRecording(false);
-                        setStatus("Done. Click Start to record again.");
-                    }
-                })["VoiceToText.useEffect"];
-                recognition.onerror = ({
-                    "VoiceToText.useEffect": (event)=>{
-                        setIsRecording(false);
-                        setStatus("Error: ".concat(event.error));
-                    }
-                })["VoiceToText.useEffect"];
-                recognitionRef.current = recognition;
-            }
-        }
-    }["VoiceToText.useEffect"], []);
-    const startRecording = async ()=>{
-        // Chrome / Edge path
-        if (recognitionRef.current) {
-            recognitionRef.current.start();
-            setStatus("🎧 Listening (speech recognition)...");
-            setIsRecording(true);
-            return;
-        }
-        // Firefox fallback (audio recording)
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: true
-            });
-            const mediaRecorder = new MediaRecorder(stream);
-            audioChunksRef.current = [];
-            mediaRecorderRef.current = mediaRecorder;
-            mediaRecorder.ondataavailable = (event)=>{
-                audioChunksRef.current.push(event.data);
-            };
-            mediaRecorder.onstop = async ()=>{
-                const audioBlob = new Blob(audioChunksRef.current, {
-                    type: "audio/webm"
-                });
-                setStatus("Audio recorded. Send to server for transcription.");
-            /*
-          🔴 SEND TO BACKEND HERE
-          const formData = new FormData();
-          formData.append("audio", audioBlob);
-
-          const res = await fetch("/api/transcribe", {
-            method: "POST",
-            body: formData,
-          });
-
-          const data = await res.json();
-          setText(data.text);
-        */ };
-            mediaRecorder.start();
-            setIsRecording(true);
-            setStatus("🎙️ Recording audio (Firefox fallback)...");
-        } catch (err) {
-            setStatus("Microphone access denied.");
-        }
-    };
-    const stopRecording = ()=>{
-        if (recognitionRef.current) {
-            recognitionRef.current.stop();
-        }
-        if (mediaRecorderRef.current) {
-            mediaRecorderRef.current.stop();
-        }
-        setIsRecording(false);
-    };
-    return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-        style: {
-            maxWidth: 600,
-            margin: "40px auto",
-            fontFamily: "Arial"
-        },
-        children: [
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
-                children: "🎤 Voice Memo to Text"
-            }, void 0, false, {
-                fileName: "[project]/components/VoiceToText.tsx",
-                lineNumber: 110,
-                columnNumber: 7
-            }, ("TURBOPACK compile-time value", void 0)),
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                onClick: startRecording,
-                disabled: isRecording,
-                children: "Start"
-            }, void 0, false, {
-                fileName: "[project]/components/VoiceToText.tsx",
-                lineNumber: 112,
-                columnNumber: 7
-            }, ("TURBOPACK compile-time value", void 0)),
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                onClick: stopRecording,
-                disabled: !isRecording,
-                children: "Stop"
-            }, void 0, false, {
-                fileName: "[project]/components/VoiceToText.tsx",
-                lineNumber: 116,
-                columnNumber: 7
-            }, ("TURBOPACK compile-time value", void 0)),
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                style: {
-                    fontStyle: "italic",
-                    marginTop: 10
-                },
-                children: status
-            }, void 0, false, {
-                fileName: "[project]/components/VoiceToText.tsx",
-                lineNumber: 120,
-                columnNumber: 7
-            }, ("TURBOPACK compile-time value", void 0)),
-            /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("textarea", {
-                value: text,
-                onChange: (e)=>setText(e.target.value),
-                placeholder: "Your transcribed text will appear here...",
-                style: {
-                    width: "100%",
-                    height: 150,
-                    marginTop: 20,
-                    fontSize: 16
-                }
-            }, void 0, false, {
-                fileName: "[project]/components/VoiceToText.tsx",
-                lineNumber: 122,
-                columnNumber: 7
-            }, ("TURBOPACK compile-time value", void 0))
-        ]
-    }, void 0, true, {
-        fileName: "[project]/components/VoiceToText.tsx",
-        lineNumber: 109,
-        columnNumber: 5
-    }, ("TURBOPACK compile-time value", void 0));
-};
-_s(VoiceToText, "Y2DXMKnGD3JdlAm4/WuwfSHcBJ8=");
-_c = VoiceToText;
-const __TURBOPACK__default__export__ = VoiceToText;
-var _c;
-__turbopack_context__.k.register(_c, "VoiceToText");
-if (typeof globalThis.$RefreshHelpers$ === 'object' && globalThis.$RefreshHelpers !== null) {
-    __turbopack_context__.k.registerExports(__turbopack_context__.m, globalThis.$RefreshHelpers$);
-}
-}),
 "[project]/hooks/useRecording.ts [app-client] (ecmascript)", ((__turbopack_context__) => {
 "use strict";
 
@@ -1006,12 +826,10 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$Header$2e$tsx_
 var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$RecordButton$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/components/RecordButton.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$RecordingsList$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/components/RecordingsList.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$TabBar$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/components/TabBar.tsx [app-client] (ecmascript)");
-var __TURBOPACK__imported__module__$5b$project$5d2f$components$2f$VoiceToText$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/components/VoiceToText.tsx [app-client] (ecmascript)");
 var __TURBOPACK__imported__module__$5b$project$5d2f$hooks$2f$useRecording$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = __turbopack_context__.i("[project]/hooks/useRecording.ts [app-client] (ecmascript)");
 ;
 var _s = __turbopack_context__.k.signature();
-'use client';
-;
+"use client";
 ;
 ;
 ;
@@ -1020,15 +838,15 @@ var _s = __turbopack_context__.k.signature();
 ;
 function Home() {
     _s();
-    const [activeTab, setActiveTab] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])('record');
+    const [activeTab, setActiveTab] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("record");
     const { isRecording, recordings, recordHint, currentlyPlaying, toggleRecording, playRecording, deleteRecording, transcribeRecording } = (0, __TURBOPACK__imported__module__$5b$project$5d2f$hooks$2f$useRecording$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRecording"])();
     const handleExtractTasks = ()=>{
         // TODO: Implement task extraction logic
-        alert('Task extraction will be implemented with backend API');
+        alert("Task extraction will be implemented with backend API");
     };
     const renderTabContent = ()=>{
         switch(activeTab){
-            case 'record':
+            case "record":
                 return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$Header$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
@@ -1059,11 +877,11 @@ function Home() {
                         }, this)
                     ]
                 }, void 0, true);
-            case 'tasks':
+            case "tasks":
                 return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     style: {
-                        padding: '40px 24px',
-                        textAlign: 'center'
+                        padding: "40px 24px",
+                        textAlign: "center"
                     },
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -1077,17 +895,12 @@ function Home() {
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                             className: "subtitle",
                             style: {
-                                marginTop: '20px'
+                                marginTop: "20px"
                             },
                             children: "Task management will be implemented here"
                         }, void 0, false, {
                             fileName: "[project]/app/page.tsx",
                             lineNumber: 55,
-                            columnNumber: 13
-                        }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$components$2f$VoiceToText$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {}, void 0, false, {
-                            fileName: "[project]/app/page.tsx",
-                            lineNumber: 58,
                             columnNumber: 13
                         }, this)
                     ]
@@ -1096,11 +909,11 @@ function Home() {
                     lineNumber: 53,
                     columnNumber: 11
                 }, this);
-            case 'insights':
+            case "insights":
                 return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     style: {
-                        padding: '40px 24px',
-                        textAlign: 'center'
+                        padding: "40px 24px",
+                        textAlign: "center"
                     },
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h1", {
@@ -1108,24 +921,24 @@ function Home() {
                             children: "Insights"
                         }, void 0, false, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 64,
+                            lineNumber: 63,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                             className: "subtitle",
                             style: {
-                                marginTop: '20px'
+                                marginTop: "20px"
                             },
                             children: "Analytics and insights will be displayed here"
                         }, void 0, false, {
                             fileName: "[project]/app/page.tsx",
-                            lineNumber: 65,
+                            lineNumber: 64,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/app/page.tsx",
-                    lineNumber: 63,
+                    lineNumber: 62,
                     columnNumber: 11
                 }, this);
             default:
@@ -1140,13 +953,13 @@ function Home() {
                 onTabChange: setActiveTab
             }, void 0, false, {
                 fileName: "[project]/app/page.tsx",
-                lineNumber: 78,
+                lineNumber: 77,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true);
 }
-_s(Home, "scdh6gTjkEXiKp51pg+liICpCPg=", false, function() {
+_s(Home, "7iHBGLXW8XgreHG1tB3IcUOicj0=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$hooks$2f$useRecording$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useRecording"]
     ];
@@ -1376,4 +1189,4 @@ else {
 }),
 ]);
 
-//# sourceMappingURL=_daf40d95._.js.map
+//# sourceMappingURL=_de3433e4._.js.map

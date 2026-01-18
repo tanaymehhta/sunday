@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Header from '@/components/Header';
-import RecordButton from '@/components/RecordButton';
-import RecordingsList from '@/components/RecordingsList';
-import TabBar from '@/components/TabBar';
-import VoiceToText from '@/components/VoiceToText';
-import { useRecording } from '@/hooks/useRecording';
+import React, { useState } from "react";
+import Header from "@/components/Header";
+import RecordButton from "@/components/RecordButton";
+import RecordingsList from "@/components/RecordingsList";
+import TabBar from "@/components/TabBar";
+import VoiceToText from "@/components/VoiceToText";
+import { useRecording } from "@/hooks/useRecording";
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('record');
+  const [activeTab, setActiveTab] = useState("record");
 
   const {
     isRecording,
@@ -18,17 +18,18 @@ export default function Home() {
     currentlyPlaying,
     toggleRecording,
     playRecording,
-    deleteRecording
+    deleteRecording,
+    transcribeRecording,
   } = useRecording();
 
   const handleExtractTasks = () => {
     // TODO: Implement task extraction logic
-    alert('Task extraction will be implemented with backend API');
+    alert("Task extraction will be implemented with backend API");
   };
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'record':
+      case "record":
         return (
           <>
             <Header />
@@ -43,24 +44,24 @@ export default function Home() {
               onPlay={playRecording}
               onDelete={deleteRecording}
               onExtract={handleExtractTasks}
+              onTranscribe={transcribeRecording}
             />
           </>
         );
-      case 'tasks':
+      case "tasks":
         return (
-          <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+          <div style={{ padding: "40px 24px", textAlign: "center" }}>
             <h1 className="title">Tasks</h1>
-            <p className="subtitle" style={{ marginTop: '20px' }}>
+            <p className="subtitle" style={{ marginTop: "20px" }}>
               Task management will be implemented here
             </p>
-            <VoiceToText />
           </div>
         );
-      case 'insights':
+      case "insights":
         return (
-          <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+          <div style={{ padding: "40px 24px", textAlign: "center" }}>
             <h1 className="title">Insights</h1>
-            <p className="subtitle" style={{ marginTop: '20px' }}>
+            <p className="subtitle" style={{ marginTop: "20px" }}>
               Analytics and insights will be displayed here
             </p>
           </div>

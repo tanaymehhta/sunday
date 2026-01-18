@@ -11,6 +11,7 @@ interface UseRecordingReturn {
   toggleRecording: () => void;
   playRecording: (id: string) => void;
   deleteRecording: (id: string) => void;
+  transcribeRecording: (id: string) => void;
 }
 
 export const useRecording = (): UseRecordingReturn => {
@@ -138,6 +139,100 @@ export const useRecording = (): UseRecordingReturn => {
     }
   }, [currentlyPlaying]);
 
+  const transcribeRecording = useCallback((id: string) => {
+    const recording = recordings.find(r => r.id === id);
+    if (!recording || recording.transcription || recording.isTranscribing) return;
+
+    // Set transcribing state
+    setRecordings(prev => prev.map(r =>
+      r.id === id ? { ...r, isTranscribing: true } : r
+    ));
+
+    // Check for Speech Recognition API
+    const SpeechRecognition =
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setRecordings(prev => prev.map(r =>
+        r.id === id
+          ? { ...r, isTranscribing: false, transcription: 'Speech recognition not supported in this browser' }
+          : r
+      ));
+      return;
+    }
+
+    // Create audio element to play the recording
+    const audio = new Audio(recording.url);
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = 'en-US';
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    let transcribedText = '';
+
+    recognition.onresult = (event: any) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          transcribedText += event.results[i][0].transcript + ' ';
+        }
+      }
+    };
+
+    recognition.onend = () => {
+      setRecordings(prev => prev.map(r =>
+        r.id === id
+          ? {
+              ...r,
+              isTranscribing: false,
+              transcription: transcribedText.trim() || 'No speech detected'
+            }
+          : r
+      ));
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setRecordings(prev => prev.map(r =>
+        r.id === id
+          ? {
+              ...r,
+              isTranscribing: false,
+              transcription: `Transcription failed: ${event.error}`
+            }
+          : r
+      ));
+    };
+
+    // Start recognition when audio plays
+    audio.onplay = () => {
+      try {
+        recognition.start();
+      } catch (err) {
+        console.error('Failed to start recognition:', err);
+      }
+    };
+
+    audio.onended = () => {
+      try {
+        recognition.stop();
+      } catch (err) {
+        console.error('Failed to stop recognition:', err);
+      }
+    };
+
+    // Play the audio to trigger transcription
+    audio.play().catch(err => {
+      console.error('Failed to play audio:', err);
+      setRecordings(prev => prev.map(r =>
+        r.id === id
+          ? { ...r, isTranscribing: false, transcription: 'Failed to play audio for transcription' }
+          : r
+      ));
+    });
+  }, [recordings]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -159,6 +254,7 @@ export const useRecording = (): UseRecordingReturn => {
     stopRecording,
     toggleRecording,
     playRecording,
-    deleteRecording
+    deleteRecording,
+    transcribeRecording
   };
 };
