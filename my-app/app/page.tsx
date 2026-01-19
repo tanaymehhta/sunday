@@ -14,6 +14,7 @@ import {
   saveConfirmedSchedule,
   savePendingSchedule,
   getPendingSchedule,
+  clearPendingSchedule,
   updatePendingEntry,
   removePendingEntry,
   saveApprovedEntry,
@@ -215,6 +216,8 @@ export default function Home() {
   const handleConfirmSchedule = () => {
     try {
       saveConfirmedSchedule(scheduleData, conversationHistory);
+      // Clear pending schedule from storage
+      clearPendingSchedule();
       // Reset the form state
       handleReset();
       // Navigate to insights tab
