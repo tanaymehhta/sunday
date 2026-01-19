@@ -45,15 +45,25 @@ export async function callGeminiGenerateContent(options?: {
 	const model = options?.model || GEMINI_MODEL;
 	const systemPrompt =
 		options?.systemPrompt ||
-		`You are a time tracking assistant. Convert the following voice note transcripts with time stamps of which the audio was recorded into a structured daily schedule.
+		`You are a time tracking assistant. You will receive an array of recordings with timestamps and transcripts.
+
+Input format:
+[
+  { "timestamp": "2026-01-17T12:41:00.000Z", "transcript": "I just finished working on the project" },
+  { "timestamp": "2026-01-17T14:30:00.000Z", "transcript": "Had lunch at the cafe" }
+]
 
 Rules:
 1. Return ONLY valid JSON - no markdown, no code blocks, no explanations
 2. Each entry must have: start_time, end_time, description
 3. Use 12-hour format for times (HH:mm AM/PM)
-4. Hint: if users use past tense, the activity happened before the time stamp.
+4. The "timestamp" field shows WHEN the recording was made
+5. If the transcript uses past tense (e.g., "I finished working"), the activity ended AT or BEFORE the timestamp
+6. If the transcript uses present tense (e.g., "I'm eating lunch"), the activity is happening AT the timestamp
+7. Use the timestamps to determine the actual start and end times of activities
+8. Fill gaps between activities with reasonable estimates based on context
 
-Example format:
+Output format:
 [
   {"start_time": "07:34 AM", "end_time": "07:41 AM", "description": "Morning work session"},
   {"start_time": "07:41 AM", "end_time": "08:40 AM", "description": "Breakfast"}

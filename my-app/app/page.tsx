@@ -41,6 +41,7 @@ export default function Home() {
   const [hasInitialResponse, setHasInitialResponse] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isCorrecting, setIsCorrecting] = useState(false);
+  const [sendFileTimestamps, setSendFileTimestamps] = useState(true);
 
   const {
     isRecording,
@@ -122,8 +123,13 @@ export default function Home() {
       try {
         // Use recordings data if available, otherwise fall back to static data
         const inputText = hasValidTranscriptions(recordings)
-          ? formatRecordingsForGemini(recordings)
+          ? formatRecordingsForGemini(recordings, sendFileTimestamps)
           : GEMINI_INPUT_JSON_TEXT;
+
+        console.log('===== DATA SENT TO GEMINI =====');
+        console.log('sendFileTimestamps:', sendFileTimestamps);
+        console.log('Input text:', inputText);
+        console.log('================================');
 
         const response = await callGeminiGenerateContent({
           userText: inputText,
@@ -460,6 +466,17 @@ export default function Home() {
                     </p>
                   </div>
                 )}
+                <div style={{ marginBottom: "20px" }}>
+                  <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontSize: "14px", color: "#333", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={sendFileTimestamps}
+                      onChange={(e) => setSendFileTimestamps(e.target.checked)}
+                      style={{ width: "18px", height: "18px", cursor: "pointer" }}
+                    />
+                    Send file timestamps to AI
+                  </label>
+                </div>
                 <button
                   onClick={handleRunGemini}
                   disabled={isRunning}
