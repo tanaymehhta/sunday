@@ -201,6 +201,17 @@ export function removePendingEntry(entryId: string): void {
 	}
 }
 
+// Clear the entire pending schedule
+export function clearPendingSchedule(): void {
+	try {
+		localStorage.removeItem("pendingSchedule");
+		console.log("Pending schedule cleared");
+	} catch (error) {
+		console.error("Failed to clear pending schedule:", error);
+		throw new Error("Failed to clear pending schedule");
+	}
+}
+
 // Save approved schedule entry (moves to insights tab)
 export function saveApprovedEntry(entry: ScheduleEntry): ApprovedSchedule {
 	const approvedEntry: ApprovedSchedule = {

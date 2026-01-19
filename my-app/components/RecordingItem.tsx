@@ -6,7 +6,6 @@ interface RecordingItemProps {
   isPlaying: boolean;
   onPlay: (id: string) => void;
   onDelete: (id: string) => void;
-  onTranscribe: (id: string) => void;
 }
 
 const RecordingItem: React.FC<RecordingItemProps> = ({
@@ -14,7 +13,6 @@ const RecordingItem: React.FC<RecordingItemProps> = ({
   isPlaying,
   onPlay,
   onDelete,
-  onTranscribe,
 }) => {
   const formatTime = (date: Date): string => {
     const year = date.getFullYear();
@@ -52,15 +50,6 @@ const RecordingItem: React.FC<RecordingItemProps> = ({
           <span className="recording-duration">
             {formatDuration(recording.duration)}
           </span>
-          {!recording.transcription && !recording.isTranscribing && (
-            <button
-              className="transcribe-btn"
-              onClick={() => onTranscribe(recording.id)}
-              title="Transcribe audio"
-            >
-              📝
-            </button>
-          )}
         </div>
         <div className="progress-bar">
           <div className="progress-fill"></div>

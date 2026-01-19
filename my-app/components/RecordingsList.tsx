@@ -8,7 +8,6 @@ interface RecordingsListProps {
   onPlay: (id: string) => void;
   onDelete: (id: string) => void;
   onExtract: () => void;
-  onTranscribe: (id: string) => void;
 }
 
 const RecordingsList: React.FC<RecordingsListProps> = ({
@@ -17,7 +16,6 @@ const RecordingsList: React.FC<RecordingsListProps> = ({
   onPlay,
   onDelete,
   onExtract,
-  onTranscribe
 }) => {
   const today = new Date().toDateString();
   const todayRecordings = recordings.filter(
@@ -50,7 +48,6 @@ const RecordingsList: React.FC<RecordingsListProps> = ({
               isPlaying={currentlyPlaying === recording.id}
               onPlay={onPlay}
               onDelete={onDelete}
-              onTranscribe={onTranscribe}
             />
           ))
         )}

@@ -14,6 +14,7 @@ import {
   saveConfirmedSchedule,
   savePendingSchedule,
   getPendingSchedule,
+  clearPendingSchedule,
   updatePendingEntry,
   removePendingEntry,
   saveApprovedEntry,
@@ -215,7 +216,10 @@ export default function Home() {
   const handleConfirmSchedule = () => {
     try {
       saveConfirmedSchedule(scheduleData, conversationHistory);
-      alert("✓ Schedule confirmed and saved successfully!");
+      // Clear pending schedule from storage
+      clearPendingSchedule();
+      // Reset the form state
+      handleReset();
       // Navigate to insights tab
       setActiveTab("insights");
     } catch (error) {
@@ -335,7 +339,6 @@ export default function Home() {
               onPlay={playRecording}
               onDelete={deleteRecording}
               onExtract={handleExtractTasks}
-              onTranscribe={transcribeRecording}
             />
           </>
         );
