@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { getSavedSchedules, SavedSchedule } from "./TableChat";
-import { ScheduleEntry } from "./ScheduleTable";
+import { ScheduleEntry } from "@/types/schedule";
 
 type CategoryData = {
   category: string;
@@ -35,7 +35,7 @@ export default function Insights() {
     }
   }, [selectedSchedule]);
 
-  const calculateCategories = (schedule: ScheduleEntry[]) => {
+  const calculateCategories = (schedule: Array<{ start_time: string; end_time: string; description: string }>) => {
     const categories: { [key: string]: { duration: number; activities: string[] } } = {};
     let totalMinutes = 0;
 
