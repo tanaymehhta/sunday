@@ -215,7 +215,8 @@ export default function Home() {
   const handleConfirmSchedule = () => {
     try {
       saveConfirmedSchedule(scheduleData, conversationHistory);
-      alert("✓ Schedule confirmed and saved successfully!");
+      // Reset the form state
+      handleReset();
       // Navigate to insights tab
       setActiveTab("insights");
     } catch (error) {
