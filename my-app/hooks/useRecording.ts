@@ -285,6 +285,7 @@ export const useRecording = (): UseRecordingReturn => {
   }, [recordings]);
 
   const uploadRecording = useCallback(async (file: File) => {
+    console.log('Upload started for file:', file.name);
     try {
       // Validate file type
       if (!file.type.startsWith('audio/')) {
@@ -303,8 +304,42 @@ export const useRecording = (): UseRecordingReturn => {
       });
 
       const duration = audio.duration * 1000; // Convert to milliseconds
-      const id = Date.now().toString();
-      const timestamp = new Date();
+      
+      // Extract timestamp from filename (e.g., "1-16-26, 10:52 AM.m4a" or "1-16-26, 10/52 AM.m4a")
+      let timestamp = new Date();
+      try {
+        const fileName = file.name.replace(/\.\w+$/, ''); // Remove extension
+        console.log('Parsing filename:', fileName);
+        const parts = fileName.split(', ');
+        console.log('Split parts:', parts);
+        
+        if (parts.length >= 2) {
+          const datePart = parts[0];
+          const timePart = parts[1];
+          
+          const dateMatch = datePart.match(/(\d+)-(\d+)-(\d+)/);
+          const timeMatch = timePart.match(/(\d+)[:\\/](\d+)\s*(AM|PM)/i);
+          
+          if (dateMatch && timeMatch) {
+            const month = parseInt(dateMatch[1]);
+            const day = parseInt(dateMatch[2]);
+            const year = parseInt(dateMatch[3]);
+            let hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const period = timeMatch[3].toUpperCase();
+            
+            if (period === 'PM' && hours !== 12) hours += 12;
+            if (period === 'AM' && hours === 12) hours = 0;
+            
+            timestamp = new Date(2000 + year, month - 1, day, hours, minutes, 0);
+            console.log('Successfully parsed timestamp:', timestamp.toISOString());
+          }
+        }
+      } catch (error) {
+        console.warn('Using current time as fallback due to parsing error:', error);
+      }
+
+      const id = timestamp.getTime().toString(); // Use timestamp as ID
 
       const newRecording: Recording = {
         id,
@@ -315,18 +350,15 @@ export const useRecording = (): UseRecordingReturn => {
       };
 
       // Save to IndexedDB
-      try {
-        await storage.saveRecording({
-          id,
-          audioBlob: file,
-          duration,
-          created_at: timestamp.toISOString(),
-        });
-      } catch (error) {
-        console.error('Failed to save uploaded recording to storage:', error);
-      }
+      await storage.saveRecording({
+        id,
+        audioBlob: file,
+        duration,
+        created_at: timestamp.toISOString(),
+      });
 
       setRecordings(prev => [newRecording, ...prev]);
+      console.log('Upload completed successfully');
     } catch (error) {
       console.error('Failed to upload recording:', error);
       alert('Failed to upload audio file. Please try again.');

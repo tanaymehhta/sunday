@@ -23,26 +23,27 @@ const RecordingsList: React.FC<RecordingsListProps> = ({
   const todayRecordings = recordings.filter(
     r => r.timestamp.toDateString() === today
   );
+  const allRecordings = recordings; // Show all recordings
 
   return (
     <section className="recordings-section">
       <div className="recordings-header">
         <h2 className="recordings-title">
-          Today&apos;s Recordings ({todayRecordings.length})
+          Recordings ({allRecordings.length})
         </h2>
-        {todayRecordings.length > 0 && (
+        {allRecordings.length > 0 && (
           <button className="extract-button" onClick={onExtract}>
             ✨ Create Schedule ›
           </button>
         )}
       </div>
       <div id="recordingsList">
-        {todayRecordings.length === 0 ? (
+        {allRecordings.length === 0 ? (
           <div className="empty-state">
-            No recordings yet today.<br />Tap the microphone to start.
+            No recordings yet.<br />Tap the microphone to start.
           </div>
         ) : (
-          todayRecordings.map(recording => (
+          allRecordings.map(recording => (
             <RecordingItem
               key={recording.id}
               recording={recording}
