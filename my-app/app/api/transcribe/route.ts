@@ -4,7 +4,6 @@ export async function POST(request: NextRequest) {
   try {
     // 1. Get form data from client
     const formData = await request.formData();
-    // @ts-expect-error - FormData.get() is available in Next.js runtime
     const audioFile = formData.get('file') as File | null;
 
     if (!audioFile || !(audioFile instanceof File)) {
