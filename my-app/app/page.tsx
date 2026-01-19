@@ -22,7 +22,10 @@ import {
 } from "@/components/TableChat";
 import { GEMINI_INPUT_JSON_TEXT } from "@/hooks/geminiInput";
 import { ScheduleEntry } from "@/types/schedule";
-import { formatRecordingsForGemini, hasValidTranscriptions } from "@/hooks/formatRecordings";
+import {
+  formatRecordingsForGemini,
+  hasValidTranscriptions,
+} from "@/hooks/formatRecordings";
 import ScheduleTable from "@/components/ScheduleTable";
 import Insights from "@/components/Insights";
 
@@ -65,7 +68,9 @@ export default function Home() {
   const handleExtractTasks = () => {
     // Check if there are valid transcriptions
     if (!hasValidTranscriptions(recordings)) {
-      alert("Please transcribe your recordings first before creating a schedule.");
+      alert(
+        "Please transcribe your recordings first before creating a schedule.",
+      );
       return;
     }
 
@@ -81,8 +86,8 @@ export default function Home() {
       cleanText = cleanText.trim();
 
       // Remove any non-JSON text before the array
-      const jsonStart = cleanText.indexOf('[');
-      const jsonEnd = cleanText.lastIndexOf(']');
+      const jsonStart = cleanText.indexOf("[");
+      const jsonEnd = cleanText.lastIndexOf("]");
       if (jsonStart !== -1 && jsonEnd !== -1) {
         cleanText = cleanText.substring(jsonStart, jsonEnd + 1);
       }
@@ -98,7 +103,7 @@ export default function Home() {
           end_time: entry.end_time,
           description: entry.description,
           note: entry.note,
-          status: 'pending' as const,
+          status: "pending" as const,
         }));
       }
       return [];
@@ -224,7 +229,7 @@ export default function Home() {
   // Handle approving an entry (move to insights)
   const handleApproveEntry = (entryId: string) => {
     try {
-      const entry = scheduleData.find(e => e.id === entryId);
+      const entry = scheduleData.find((e) => e.id === entryId);
       if (!entry) return;
 
       // Save to approved schedules
@@ -234,7 +239,7 @@ export default function Home() {
       removePendingEntry(entryId);
 
       // Update local state
-      setScheduleData(prev => prev.filter(e => e.id !== entryId));
+      setScheduleData((prev) => prev.filter((e) => e.id !== entryId));
 
       // Show success
       setShowSuccess(true);
@@ -247,7 +252,9 @@ export default function Home() {
       }
     } catch (error) {
       console.error("Error approving entry:", error);
-      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   };
 
@@ -255,45 +262,54 @@ export default function Home() {
   const handleRejectEntry = (entryId: string) => {
     try {
       // Update entry status to rejected
-      updatePendingEntry(entryId, { status: 'rejected' });
+      updatePendingEntry(entryId, { status: "rejected" });
 
       // Update local state
-      setScheduleData(prev =>
-        prev.map(e => e.id === entryId ? { ...e, status: 'rejected' as const } : e)
+      setScheduleData((prev) =>
+        prev.map((e) =>
+          e.id === entryId ? { ...e, status: "rejected" as const } : e,
+        ),
       );
     } catch (error) {
       console.error("Error rejecting entry:", error);
-      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     }
   };
 
   // Handle correcting an entry
-  const handleCorrectEntry = async (entryId: string, correctionText: string) => {
+  const handleCorrectEntry = async (
+    entryId: string,
+    correctionText: string,
+  ) => {
     try {
       setIsCorrecting(true);
-      const entry = scheduleData.find(e => e.id === entryId);
+      const entry = scheduleData.find((e) => e.id === entryId);
       if (!entry) return;
 
       // Call Gemini to correct the entry
       const correctedEntry = await correctScheduleEntry(
         entry,
         correctionText,
-        conversationHistory
+        conversationHistory,
       );
 
       // Update pending storage
       updatePendingEntry(entryId, correctedEntry);
 
       // Update local state
-      setScheduleData(prev =>
-        prev.map(e => e.id === entryId ? correctedEntry : e)
+      setScheduleData((prev) =>
+        prev.map((e) => (e.id === entryId ? correctedEntry : e)),
       );
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
     } catch (error) {
       console.error("Error correcting entry:", error);
-      alert(`Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+      alert(
+        `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
     } finally {
       setIsCorrecting(false);
     }
@@ -324,117 +340,6 @@ export default function Home() {
           </>
         );
       case "insights":
-        const approvedSchedules = getApprovedSchedules();
-        return (
-          <div style={{ padding: "20px 24px 100px", minHeight: "calc(100vh - 80px)" }}>
-            <h1 className="title" style={{ textAlign: "center", marginBottom: "20px" }}>
-              Insights
-            </h1>
-            {approvedSchedules.length === 0 ? (
-              <div style={{ padding: "40px 24px", textAlign: "center" }}>
-                <p className="subtitle" style={{ marginTop: "20px", color: "#999" }}>
-                  No approved schedules yet.
-                  <br />
-                  Approve entries from the Confirm tab to see them here.
-                </p>
-              </div>
-            ) : (
-              <div style={{ maxWidth: "900px", margin: "0 auto" }}>
-                <p style={{
-                  fontSize: "14px",
-                  color: "#666",
-                  marginBottom: "16px",
-                  textAlign: "center"
-                }}>
-                  {approvedSchedules.length} approved {approvedSchedules.length === 1 ? 'entry' : 'entries'}
-                </p>
-                <table style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  backgroundColor: "#fff",
-                  borderRadius: "12px",
-                  overflow: "hidden",
-                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                }}>
-                  <thead>
-                    <tr style={{ backgroundColor: "#34C759", color: "#fff" }}>
-                      <th style={{
-                        padding: "16px",
-                        textAlign: "left",
-                        fontWeight: "600",
-                        fontSize: "14px",
-                        width: "100px",
-                      }}>
-                        Date
-                      </th>
-                      <th style={{
-                        padding: "16px",
-                        textAlign: "left",
-                        fontWeight: "600",
-                        fontSize: "14px",
-                        width: "180px",
-                      }}>
-                        Time
-                      </th>
-                      <th style={{
-                        padding: "16px",
-                        textAlign: "left",
-                        fontWeight: "600",
-                        fontSize: "14px",
-                      }}>
-                        Activity
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {approvedSchedules.map((entry, index) => (
-                      <tr
-                        key={entry.id}
-                        style={{
-                          borderBottom: index < approvedSchedules.length - 1 ? "1px solid #eee" : "none",
-                        }}
-                      >
-                        <td style={{
-                          padding: "14px 16px",
-                          fontSize: "13px",
-                          color: "#666",
-                        }}>
-                          {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </td>
-                        <td style={{
-                          padding: "14px 16px",
-                          fontSize: "14px",
-                          color: "#333",
-                          fontWeight: "500",
-                        }}>
-                          {entry.start_time} - {entry.end_time}
-                        </td>
-                        <td style={{
-                          padding: "14px 16px",
-                          fontSize: "14px",
-                          color: "#666",
-                        }}>
-                          <div>{entry.description}</div>
-                          {entry.note && (
-                            <div style={{
-                              fontSize: "12px",
-                              color: "#999",
-                              marginTop: "4px",
-                              fontStyle: "italic",
-                            }}>
-                              Note: {entry.note}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        );
-      case "insights2":
         return <Insights />;
 
       case "confirm":
@@ -494,7 +399,9 @@ export default function Home() {
                   zIndex: 1000,
                 }}
               >
-                <span style={{ fontSize: "14px" }}>Processing correction...</span>
+                <span style={{ fontSize: "14px" }}>
+                  Processing correction...
+                </span>
               </div>
             )}
 
@@ -514,10 +421,21 @@ export default function Home() {
                       margin: "0 auto 20px",
                     }}
                   >
-                    <p style={{ fontSize: "14px", color: "#2e7d32", margin: 0 }}>
-                      ✓ {recordings.filter(r => r.transcription &&
-                        !r.transcription.startsWith('Transcription failed') &&
-                        r.transcription !== 'No speech detected').length} recording(s) with transcriptions ready
+                    <p
+                      style={{ fontSize: "14px", color: "#2e7d32", margin: 0 }}
+                    >
+                      ✓{" "}
+                      {
+                        recordings.filter(
+                          (r) =>
+                            r.transcription &&
+                            !r.transcription.startsWith(
+                              "Transcription failed",
+                            ) &&
+                            r.transcription !== "No speech detected",
+                        ).length
+                      }{" "}
+                      recording(s) with transcriptions ready
                     </p>
                   </div>
                 ) : (
@@ -531,8 +449,11 @@ export default function Home() {
                       margin: "0 auto 20px",
                     }}
                   >
-                    <p style={{ fontSize: "14px", color: "#e65100", margin: 0 }}>
-                      No recordings with transcriptions found. Using sample data.
+                    <p
+                      style={{ fontSize: "14px", color: "#e65100", margin: 0 }}
+                    >
+                      No recordings with transcriptions found. Using sample
+                      data.
                     </p>
                   </div>
                 )}
@@ -556,13 +477,7 @@ export default function Home() {
               </div>
             ) : (
               <>
-                <ScheduleTable
-                  entries={scheduleData}
-                  onApprove={handleApproveEntry}
-                  onReject={handleRejectEntry}
-                  onCorrect={handleCorrectEntry}
-                  showActions={true}
-                />
+                <ScheduleTable entries={scheduleData} />
 
                 <div
                   style={{
