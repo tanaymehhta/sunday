@@ -37,6 +37,66 @@ export const useRecording = (): UseRecordingReturn => {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Helper function to auto-transcribe a recording
+  const autoTranscribe = useCallback(async (recordingId: string, audioBlob: Blob) => {
+    // Set transcribing state
+    setRecordings(prev => prev.map(r =>
+      r.id === recordingId ? { ...r, isTranscribing: true } : r
+    ));
+
+    try {
+      // Create FormData with audio file
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'recording.webm');
+
+      // Call our API route which proxies to ElevenLabs
+      const response = await fetch('/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(errorData.error || `Transcription failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const transcription = data.text || 'No speech detected';
+
+      // Update state with transcription
+      setRecordings(prev => prev.map(r =>
+        r.id === recordingId
+          ? {
+              ...r,
+              isTranscribing: false,
+              transcription,
+            }
+          : r
+      ));
+
+      // Save transcription to storage
+      await storage.updateRecording(recordingId, { transcription });
+
+    } catch (error) {
+      console.error('Auto-transcription error:', error);
+      const transcription = `Transcription failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+
+      // Update state with error
+      setRecordings(prev => prev.map(r =>
+        r.id === recordingId
+          ? {
+              ...r,
+              isTranscribing: false,
+              transcription,
+            }
+          : r
+      ));
+
+      // Save error to storage
+      storage.updateRecording(recordingId, { transcription }).catch(console.error);
+    }
+  }, []);
+
   // Load recordings from storage on mount
   useEffect(() => {
     const loadRecordings = async () => {
@@ -113,6 +173,11 @@ export const useRecording = (): UseRecordingReturn => {
 
         setRecordings(prev => [newRecording, ...prev]);
         stream.getTracks().forEach(track => track.stop());
+
+        // Auto-transcribe the new recording
+        setTimeout(() => {
+          autoTranscribe(id, audioBlob);
+        }, 100);
       };
 
       mediaRecorder.start();
@@ -128,7 +193,7 @@ export const useRecording = (): UseRecordingReturn => {
       console.error('Failed to start recording:', err);
       alert('Could not access microphone. Please allow microphone access.');
     }
-  }, []);
+  }, [autoTranscribe]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -327,11 +392,16 @@ export const useRecording = (): UseRecordingReturn => {
       }
 
       setRecordings(prev => [newRecording, ...prev]);
+
+      // Auto-transcribe the uploaded recording
+      setTimeout(() => {
+        autoTranscribe(id, file);
+      }, 100);
     } catch (error) {
       console.error('Failed to upload recording:', error);
       alert('Failed to upload audio file. Please try again.');
     }
-  }, []);
+  }, [autoTranscribe]);
 
   // Cleanup on unmount
   useEffect(() => {

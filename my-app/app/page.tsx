@@ -335,7 +335,6 @@ export default function Home() {
               onPlay={playRecording}
               onDelete={deleteRecording}
               onExtract={handleExtractTasks}
-              onTranscribe={transcribeRecording}
             />
           </>
         );
