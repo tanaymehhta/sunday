@@ -58,15 +58,36 @@ class LocalStorage {
     created_at?: string;
     transcription?: string | null;
   }): Promise<RecordingRecord> {
+    console.log('=== SAVING RECORDING ===');
+    console.log('Recording ID:', recording.id);
+    console.log('Provided created_at:', recording.created_at);
+    
+    // If no created_at provided, create local time string
+    let createdAt = recording.created_at;
+    if (!createdAt) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      createdAt = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      console.log('Generated local time string:', createdAt);
+    }
+    
+    console.log('Final created_at to store:', createdAt);
+    
     const record: RecordingRecord = {
       id: recording.id,
       audioBlob: recording.audioBlob,
       duration: recording.duration,
-      created_at: recording.created_at || new Date().toISOString(),
+      created_at: createdAt,
       transcription: recording.transcription || null,
     };
 
     await db.recordings.put(record);
+    console.log('Recording saved successfully');
     return record;
   }
 
@@ -75,6 +96,16 @@ class LocalStorage {
    */
   async getRecordings(): Promise<StoredRecording[]> {
     const recordings = await db.recordings.orderBy('created_at').reverse().toArray();
+    
+    console.log('=== ALL RECORDINGS IN DB ===');
+    console.log('Total recordings:', recordings.length);
+    recordings.forEach((r, i) => {
+      console.log(`Recording ${i + 1}:`, {
+        id: r.id,
+        created_at: r.created_at,
+        transcription: r.transcription?.substring(0, 30)
+      });
+    });
 
     // Convert stored blobs back to playable URLs
     return recordings.map((r) => ({
@@ -126,17 +157,36 @@ class LocalStorage {
    * Get recordings for a specific date
    */
   async getRecordingsByDate(date: Date): Promise<StoredRecording[]> {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+    console.log('=== FILTERING RECORDINGS BY DATE ===');
+    console.log('Input date:', date);
+    console.log('Input date toString:', date.toString());
+    
+    // Create local date range strings without timezone conversion
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    console.log('Date components - Year:', year, 'Month:', month, 'Day:', day);
+    
+    const startOfDay = `${year}-${month}-${day}T00:00:00`;
+    const endOfDay = `${year}-${month}-${day}T23:59:59`;
+    
+    console.log('Filtering range:', startOfDay, 'to', endOfDay);
 
     const recordings = await db.recordings
       .where('created_at')
-      .between(startOfDay.toISOString(), endOfDay.toISOString())
+      .between(startOfDay, endOfDay)
       .reverse()
       .toArray();
+    
+    console.log('Found recordings:', recordings.length);
+    recordings.forEach((r, i) => {
+      console.log(`Recording ${i + 1}:`, {
+        id: r.id,
+        created_at: r.created_at,
+        transcription: r.transcription?.substring(0, 50)
+      });
+    });
 
     return recordings.map((r) => ({
       id: r.id,

@@ -21,22 +21,39 @@ export default function ScheduleTable({
 	// Determine the date from recordings if available
 	let scheduleDate: string | null = null;
 	if (recordings && recordings.length > 0) {
+		console.log('=== SCHEDULE TABLE DATE DETECTION ===');
+		console.log('Total recordings:', recordings.length);
+		
 		// Find the most common date from recordings (using local date)
 		const dates = recordings.map(r => {
 			const date = new Date(r.timestamp);
+			console.log('Recording timestamp:', r.timestamp);
+			console.log('Recording timestamp toString:', r.timestamp.toString());
+			
 			// Get local date string (YYYY-MM-DD)
 			const year = date.getFullYear();
 			const month = String(date.getMonth() + 1).padStart(2, '0');
 			const day = String(date.getDate()).padStart(2, '0');
-			return `${year}-${month}-${day}`;
+			const localDate = `${year}-${month}-${day}`;
+			console.log('Extracted local date:', localDate);
+			
+			return localDate;
 		});
+		
+		console.log('All dates:', dates);
+		
 		// Count occurrences of each date
 		const dateCounts: { [key: string]: number } = {};
 		dates.forEach(date => {
 			dateCounts[date] = (dateCounts[date] || 0) + 1;
 		});
+		
+		console.log('Date counts:', dateCounts);
+		
 		// Find the most common date
 		scheduleDate = Object.entries(dateCounts).sort((a, b) => b[1] - a[1])[0][0];
+		console.log('Most common date (schedule date):', scheduleDate);
+		console.log('======================================');
 	}
 
 	// Format date for display

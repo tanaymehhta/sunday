@@ -15,12 +15,20 @@ const RecordingItem: React.FC<RecordingItemProps> = ({
   onDelete,
 }) => {
   const formatTime = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
+    // Format date in local timezone
+    const dateStr = date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).split('/').reverse().join('-'); // Convert MM/DD/YYYY to YYYY-MM-DD
+    
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    
+    return `${dateStr} ${timeStr}`;
   };
 
   const formatDuration = (ms: number): string => {

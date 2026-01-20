@@ -159,13 +159,21 @@ export const useRecording = (): UseRecordingReturn => {
           audioBlob,
         };
 
-        // Save to IndexedDB
+        // Save to IndexedDB with local time string
         try {
+          const year = timestamp.getFullYear();
+          const month = String(timestamp.getMonth() + 1).padStart(2, '0');
+          const day = String(timestamp.getDate()).padStart(2, '0');
+          const hours = String(timestamp.getHours()).padStart(2, '0');
+          const minutes = String(timestamp.getMinutes()).padStart(2, '0');
+          const seconds = String(timestamp.getSeconds()).padStart(2, '0');
+          const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+          
           await storage.saveRecording({
             id,
             audioBlob,
             duration,
-            created_at: timestamp.toISOString(),
+            created_at: localTimeString,
           });
         } catch (error) {
           console.error('Failed to save recording to storage:', error);
@@ -374,6 +382,8 @@ export const useRecording = (): UseRecordingReturn => {
       let timestamp = new Date();
       try {
         const fileName = file.name.replace(/\.\w+$/, ''); // Remove extension
+        console.log('=== TIMESTAMP PARSING START ===');
+        console.log('Original filename:', file.name);
         console.log('Parsing filename:', fileName);
         const parts = fileName.split(', ');
         console.log('Split parts:', parts);
@@ -381,9 +391,14 @@ export const useRecording = (): UseRecordingReturn => {
         if (parts.length >= 2) {
           const datePart = parts[0];
           const timePart = parts[1];
+          console.log('Date part:', datePart);
+          console.log('Time part:', timePart);
           
           const dateMatch = datePart.match(/(\d+)-(\d+)-(\d+)/);
           const timeMatch = timePart.match(/(\d+)[:\\/](\d+)\s*(AM|PM)/i);
+          
+          console.log('Date match:', dateMatch);
+          console.log('Time match:', timeMatch);
           
           if (dateMatch && timeMatch) {
             const month = parseInt(dateMatch[1]);
@@ -393,18 +408,47 @@ export const useRecording = (): UseRecordingReturn => {
             const minutes = parseInt(timeMatch[2]);
             const period = timeMatch[3].toUpperCase();
             
+            console.log('Parsed components - Month:', month, 'Day:', day, 'Year:', year);
+            console.log('Parsed time - Hours:', hours, 'Minutes:', minutes, 'Period:', period);
+            
             if (period === 'PM' && hours !== 12) hours += 12;
             if (period === 'AM' && hours === 12) hours = 0;
             
+            console.log('Adjusted hours (24h format):', hours);
+            
             timestamp = new Date(2000 + year, month - 1, day, hours, minutes, 0);
-            console.log('Successfully parsed timestamp:', timestamp.toISOString());
+            console.log('Created timestamp (local):', timestamp);
+            console.log('Timestamp toString:', timestamp.toString());
+            console.log('Timestamp components:', {
+              year: timestamp.getFullYear(),
+              month: timestamp.getMonth() + 1,
+              day: timestamp.getDate(),
+              hours: timestamp.getHours(),
+              minutes: timestamp.getMinutes()
+            });
+          } else {
+            console.log('Failed to match date or time pattern');
           }
+        } else {
+          console.log('Filename does not have expected format (needs comma separator)');
         }
       } catch (error) {
         console.warn('Using current time as fallback due to parsing error:', error);
       }
 
       const id = timestamp.getTime().toString(); // Use timestamp as ID
+
+      // Create local time string (not UTC)
+      const year = timestamp.getFullYear();
+      const month = String(timestamp.getMonth() + 1).padStart(2, '0');
+      const day = String(timestamp.getDate()).padStart(2, '0');
+      const hours = String(timestamp.getHours()).padStart(2, '0');
+      const minutes = String(timestamp.getMinutes()).padStart(2, '0');
+      const seconds = String(timestamp.getSeconds()).padStart(2, '0');
+      const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+      
+      console.log('Local time string to store:', localTimeString);
+      console.log('=== TIMESTAMP PARSING END ===');
 
       const newRecording: Recording = {
         id,
@@ -414,12 +458,12 @@ export const useRecording = (): UseRecordingReturn => {
         audioBlob: file,
       };
 
-      // Save to IndexedDB
+      // Save to IndexedDB with local time string
       await storage.saveRecording({
         id,
         audioBlob: file,
         duration,
-        created_at: timestamp.toISOString(),
+        created_at: localTimeString,
       });
 
       setRecordings(prev => [newRecording, ...prev]);

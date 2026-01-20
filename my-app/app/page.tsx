@@ -85,11 +85,29 @@ export default function Home() {
 
     if (transcribedRecordings.length > 0) {
       // Get all unique dates from recordings
+      console.log('=== SCHEDULE DATE CHECK (Extract Tasks) ===');
+      console.log('Total transcribed recordings:', transcribedRecordings.length);
+      
       const dates = transcribedRecordings.map((r) => {
         const date = new Date(r.timestamp);
-        return date.toISOString().split("T")[0];
+        console.log('Recording timestamp:', r.timestamp);
+        console.log('Recording timestamp toString:', r.timestamp.toString());
+        
+        // Use local date components instead of ISO string (which converts to UTC)
+        const localYear = date.getFullYear();
+        const localMonth = String(date.getMonth() + 1).padStart(2, '0');
+        const localDay = String(date.getDate()).padStart(2, '0');
+        const localDate = `${localYear}-${localMonth}-${localDay}`;
+        console.log('Local date:', localDate);
+        
+        return localDate;
       });
       const uniqueDates = [...new Set(dates)];
+      
+      console.log('All dates found:', dates);
+      console.log('Unique dates:', uniqueDates);
+      console.log('Number of unique dates:', uniqueDates.length);
+      console.log('===========================================');
 
       if (uniqueDates.length > 1) {
         const datesList = uniqueDates.map(d => `- ${d}`).join('\n');
@@ -171,11 +189,29 @@ Do you want to continue anyway?`
 
         if (transcribedRecordings.length > 0) {
           // Get all unique dates from recordings
+          console.log('=== SCHEDULE DATE CHECK (Run Gemini) ===');
+          console.log('Total transcribed recordings:', transcribedRecordings.length);
+          
           const dates = transcribedRecordings.map((r) => {
             const date = new Date(r.timestamp);
-            return date.toISOString().split("T")[0];
+            console.log('Recording timestamp:', r.timestamp);
+            console.log('Recording timestamp toString:', r.timestamp.toString());
+            
+            // Use local date components instead of ISO string (which converts to UTC)
+            const localYear = date.getFullYear();
+            const localMonth = String(date.getMonth() + 1).padStart(2, '0');
+            const localDay = String(date.getDate()).padStart(2, '0');
+            const localDate = `${localYear}-${localMonth}-${localDay}`;
+            console.log('Local date:', localDate);
+            
+            return localDate;
           });
           const uniqueDates = [...new Set(dates)];
+          
+          console.log('All dates found:', dates);
+          console.log('Unique dates:', uniqueDates);
+          console.log('Number of unique dates:', uniqueDates.length);
+          console.log('========================================');
 
           if (uniqueDates.length > 1) {
             const datesList = uniqueDates.map(d => `- ${d}`).join('\n');

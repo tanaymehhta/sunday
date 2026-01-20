@@ -110,8 +110,7 @@ const Welcome: React.FC = () => {
               marginBottom: "16px",
             }}
           >
-            You can automate recording with Iphone shortcut to start recording through home screen button, voice activation, or double-tapping the back of the Iphone, and timestamps each file for you. Here are
-            short videos to help you set up recording automations. After you are done, you airdrop the file from the day you want to analyze to your computer and upload onto our app:
+            You can automate recording with an iPhone Shortcut to start recording via a home screen button, voice activation, or double-tapping the back of your iPhone. Each file is automatically timestamped. Here are short videos to help you set up recording automations. Once you're done, simply AirDrop the file from the day you want to analyze to your computer and upload it to our app:
           </p>
 
           <div style={{ marginBottom: "24px" }}>
