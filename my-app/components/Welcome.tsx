@@ -110,9 +110,8 @@ const Welcome: React.FC = () => {
               marginBottom: "16px",
             }}
           >
-            You can automate your voice memo to do the work for you! Here are
-            short videos to help you set up recording automation and airdrop the
-            files to our interface:
+            You can automate recording with Iphone shortcut to start recording through home screen button, voice activation, or double-tapping the back of the Iphone, and timestamps each file for you. Here are
+            short videos to help you set up recording automations. After you are done, you airdrop the file from the day you want to analyze to your computer and upload onto our app:
           </p>
 
           <div style={{ marginBottom: "24px" }}>
