@@ -21,7 +21,6 @@ import {
   getApprovedSchedules,
   correctScheduleEntry,
 } from "@/components/TableChat";
-import { GEMINI_INPUT_JSON_TEXT } from "@/hooks/geminiInput";
 import { ScheduleEntry } from "@/types/schedule";
 import {
   formatRecordingsForGemini,
@@ -42,7 +41,6 @@ export default function Home() {
   const [hasInitialResponse, setHasInitialResponse] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isCorrecting, setIsCorrecting] = useState(false);
-  const [sendFileTimestamps, setSendFileTimestamps] = useState(true);
 
   const {
     isRecording,
@@ -75,6 +73,38 @@ export default function Home() {
         "Please transcribe your recordings first before creating a schedule.",
       );
       return;
+    }
+
+    // Check if all recordings are from the same day
+    const transcribedRecordings = recordings.filter(
+      (r) =>
+        r.transcription &&
+        !r.transcription.startsWith("Transcription failed") &&
+        r.transcription !== "No speech detected"
+    );
+
+    if (transcribedRecordings.length > 0) {
+      // Get all unique dates from recordings
+      const dates = transcribedRecordings.map((r) => {
+        const date = new Date(r.timestamp);
+        return date.toISOString().split("T")[0];
+      });
+      const uniqueDates = [...new Set(dates)];
+
+      if (uniqueDates.length > 1) {
+        const datesList = uniqueDates.map(d => `- ${d}`).join('\n');
+        const proceed = window.confirm(
+          `Warning: Your recordings span multiple days:
+${datesList}
+
+For best results, we recommend creating a schedule for one day at a time.
+
+Do you want to continue anyway?`
+        );
+        if (!proceed) {
+          return;
+        }
+      }
     }
 
     // Navigate to confirm tab
@@ -122,13 +152,52 @@ export default function Home() {
     if (!hasInitialResponse) {
       setIsRunning(true);
       try {
-        // Use recordings data if available, otherwise fall back to static data
-        const inputText = hasValidTranscriptions(recordings)
-          ? formatRecordingsForGemini(recordings, sendFileTimestamps)
-          : GEMINI_INPUT_JSON_TEXT;
+        // Check if we have valid recordings
+        const usingRealRecordings = hasValidTranscriptions(recordings);
+        
+        if (!usingRealRecordings) {
+          alert("Please add and transcribe recordings before generating a schedule.");
+          setIsRunning(false);
+          return;
+        }
+        
+        // Check for same-day recordings
+        const transcribedRecordings = recordings.filter(
+          (r) =>
+            r.transcription &&
+            !r.transcription.startsWith("Transcription failed") &&
+            r.transcription !== "No speech detected"
+        );
+
+        if (transcribedRecordings.length > 0) {
+          // Get all unique dates from recordings
+          const dates = transcribedRecordings.map((r) => {
+            const date = new Date(r.timestamp);
+            return date.toISOString().split("T")[0];
+          });
+          const uniqueDates = [...new Set(dates)];
+
+          if (uniqueDates.length > 1) {
+            const datesList = uniqueDates.map(d => `- ${d}`).join('\n');
+            const proceed = window.confirm(
+              `Warning: Your recordings span multiple days:
+${datesList}
+
+For best results, we recommend creating a schedule for one day at a time.
+
+Do you want to continue anyway?`
+            );
+            if (!proceed) {
+              setIsRunning(false);
+              return;
+            }
+          }
+        }
+
+        // Use recordings data
+        const inputText = formatRecordingsForGemini(recordings, true);
 
         console.log('===== DATA SENT TO GEMINI =====');
-        console.log('sendFileTimestamps:', sendFileTimestamps);
         console.log('Input text:', inputText);
         console.log('================================');
 
@@ -222,7 +291,7 @@ export default function Home() {
 
   const handleConfirmSchedule = () => {
     try {
-      saveConfirmedSchedule(scheduleData, conversationHistory);
+      saveConfirmedSchedule(scheduleData, conversationHistory, recordings);
       // Clear pending schedule from storage
       clearPendingSchedule();
       // Reset the form state
@@ -464,31 +533,19 @@ export default function Home() {
                     <p
                       style={{ fontSize: "14px", color: "#e65100", margin: 0 }}
                     >
-                      No recordings with transcriptions found. Using sample
-                      data.
+                      ⚠️ No recordings with transcriptions found. Please add and transcribe recordings first.
                     </p>
                   </div>
                 )}
-                <div style={{ marginBottom: "20px" }}>
-                  <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", fontSize: "14px", color: "#333", cursor: "pointer" }}>
-                    <input
-                      type="checkbox"
-                      checked={sendFileTimestamps}
-                      onChange={(e) => setSendFileTimestamps(e.target.checked)}
-                      style={{ width: "18px", height: "18px", cursor: "pointer" }}
-                    />
-                    Send file timestamps to AI
-                  </label>
-                </div>
                 <button
                   onClick={handleRunGemini}
-                  disabled={isRunning}
+                  disabled={isRunning || !hasValidTranscriptions(recordings)}
                   style={{
                     padding: "14px 36px",
                     fontSize: "16px",
                     fontWeight: "600",
                     color: "#fff",
-                    backgroundColor: isRunning ? "#999" : "#007AFF",
+                    backgroundColor: isRunning || !hasValidTranscriptions(recordings) ? "#999" : "#007AFF",
                     border: "none",
                     borderRadius: "12px",
                     cursor: isRunning ? "not-allowed" : "pointer",
@@ -500,7 +557,7 @@ export default function Home() {
               </div>
             ) : (
               <>
-                <ScheduleTable entries={scheduleData} />
+                <ScheduleTable entries={scheduleData} recordings={recordings} />
 
                 <div
                   style={{
@@ -621,6 +678,42 @@ export default function Home() {
     <>
       {renderTabContent()}
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      
+      {/* Floating Feedback Button - appears on all tabs */}
+      <a
+        href="https://forms.gle/fyBnNqK2KtLoweWx8"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          position: "fixed",
+          bottom: "100px",
+          right: "24px",
+          backgroundColor: "#667eea",
+          color: "#fff",
+          padding: "14px 24px",
+          borderRadius: "50px",
+          fontSize: "15px",
+          fontWeight: "600",
+          textDecoration: "none",
+          boxShadow: "0 4px 16px rgba(102, 126, 234, 0.4)",
+          transition: "all 0.3s ease",
+          zIndex: 1000,
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "translateY(-2px)";
+          e.currentTarget.style.boxShadow = "0 6px 20px rgba(102, 126, 234, 0.5)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = "0 4px 16px rgba(102, 126, 234, 0.4)";
+        }}
+      >
+        <span style={{ fontSize: "18px" }}>💬</span>
+        Feedback
+      </a>
     </>
   );
 }

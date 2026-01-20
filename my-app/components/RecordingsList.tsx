@@ -21,7 +21,8 @@ const RecordingsList: React.FC<RecordingsListProps> = ({
   const todayRecordings = recordings.filter(
     r => r.timestamp.toDateString() === today
   );
-  const allRecordings = recordings; // Show all recordings
+  // Sort recordings by timestamp (newest first)
+  const allRecordings = [...recordings].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
 
   return (
     <section className="recordings-section">

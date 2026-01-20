@@ -409,42 +409,6 @@ const Welcome: React.FC = () => {
           Tap the <strong>Record</strong> tab below to begin capturing your day
         </p>
       </div>
-
-      {/* Floating Feedback Button */}
-      <a
-        href="https://forms.gle/fyBnNqK2KtLoweWx8"
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          position: "fixed",
-          bottom: "100px",
-          right: "24px",
-          backgroundColor: "#667eea",
-          color: "#fff",
-          padding: "14px 24px",
-          borderRadius: "50px",
-          fontSize: "15px",
-          fontWeight: "600",
-          textDecoration: "none",
-          boxShadow: "0 4px 16px rgba(102, 126, 234, 0.4)",
-          transition: "all 0.3s ease",
-          zIndex: 1000,
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow = "0 6px 20px rgba(102, 126, 234, 0.5)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 4px 16px rgba(102, 126, 234, 0.4)";
-        }}
-      >
-        <span style={{ fontSize: "18px" }}>💬</span>
-        Feedback
-      </a>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { GEMINI_INPUT_JSON_TEXT } from "../hooks/geminiInput";
 import { ScheduleEntry, PendingSchedule, ApprovedSchedule } from "@/types/schedule";
 
-export const GEMINI_MODEL = "gemini-2.5-flash-lite";
+export const GEMINI_MODEL = "gemini-2.5-pro";
 
 // Try common env sources; you can replace this later
 export const getGeminiApiKey = (): string => {
@@ -332,11 +332,40 @@ Rules:
 // Save confirmed schedule to localStorage
 export function saveConfirmedSchedule(
 	scheduleData: SavedSchedule["scheduleData"],
-	conversationHistory: ConversationMessage[]
+	conversationHistory: ConversationMessage[],
+	recordings?: Array<{ timestamp: Date }>
 ): SavedSchedule {
+	// Determine the date from recordings if available
+	let scheduleDate: string;
+	if (recordings && recordings.length > 0) {
+		// Find the most common date from recordings (using local date)
+		const dates = recordings.map(r => {
+			const date = new Date(r.timestamp);
+			// Get local date string (YYYY-MM-DD)
+			const year = date.getFullYear();
+			const month = String(date.getMonth() + 1).padStart(2, '0');
+			const day = String(date.getDate()).padStart(2, '0');
+			return `${year}-${month}-${day}`;
+		});
+		// Count occurrences of each date
+		const dateCounts: { [key: string]: number } = {};
+		dates.forEach(date => {
+			dateCounts[date] = (dateCounts[date] || 0) + 1;
+		});
+		// Find the most common date
+		scheduleDate = Object.entries(dateCounts).sort((a, b) => b[1] - a[1])[0][0];
+	} else {
+		// Fallback to current date if no recordings (using local date)
+		const now = new Date();
+		const year = now.getFullYear();
+		const month = String(now.getMonth() + 1).padStart(2, '0');
+		const day = String(now.getDate()).padStart(2, '0');
+		scheduleDate = `${year}-${month}-${day}`;
+	}
+
 	const savedSchedule: SavedSchedule = {
 		id: `schedule_${Date.now()}`,
-		date: new Date().toISOString().split("T")[0],
+		date: scheduleDate,
 		scheduleData,
 		conversationHistory,
 		savedAt: new Date().toISOString(),

@@ -2,10 +2,12 @@ import { ScheduleEntry } from "@/types/schedule";
 
 type ScheduleTableProps = {
 	entries: ScheduleEntry[];
+	recordings?: Array<{ timestamp: Date }>;
 };
 
 export default function ScheduleTable({
-	entries
+	entries,
+	recordings
 }: ScheduleTableProps) {
 
 	if (!entries || entries.length === 0) {
@@ -16,12 +18,56 @@ export default function ScheduleTable({
 		);
 	}
 
+	// Determine the date from recordings if available
+	let scheduleDate: string | null = null;
+	if (recordings && recordings.length > 0) {
+		// Find the most common date from recordings (using local date)
+		const dates = recordings.map(r => {
+			const date = new Date(r.timestamp);
+			// Get local date string (YYYY-MM-DD)
+			const year = date.getFullYear();
+			const month = String(date.getMonth() + 1).padStart(2, '0');
+			const day = String(date.getDate()).padStart(2, '0');
+			return `${year}-${month}-${day}`;
+		});
+		// Count occurrences of each date
+		const dateCounts: { [key: string]: number } = {};
+		dates.forEach(date => {
+			dateCounts[date] = (dateCounts[date] || 0) + 1;
+		});
+		// Find the most common date
+		scheduleDate = Object.entries(dateCounts).sort((a, b) => b[1] - a[1])[0][0];
+	}
+
+	// Format date for display
+	const formatDate = (dateStr: string) => {
+		const [year, month, day] = dateStr.split('-').map(Number);
+		const date = new Date(year, month - 1, day);
+		return date.toLocaleDateString('en-US', { 
+			weekday: 'long', 
+			year: 'numeric', 
+			month: 'long', 
+			day: 'numeric' 
+		});
+	};
+
 	return (
 		<div style={{
 			padding: "20px",
 			maxWidth: "900px",
 			margin: "0 auto",
 		}}>
+			{scheduleDate && (
+				<div style={{
+					textAlign: "center",
+					marginBottom: "16px",
+					fontSize: "16px",
+					fontWeight: "600",
+					color: "#007AFF",
+				}}>
+					{formatDate(scheduleDate)}
+				</div>
+			)}
 			<table style={{
 				width: "100%",
 				borderCollapse: "collapse",

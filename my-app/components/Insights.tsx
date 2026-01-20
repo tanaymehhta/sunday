@@ -84,14 +84,42 @@ export default function Insights() {
   const categorizeActivity = (description: string): string => {
     const lower = description.toLowerCase();
     
-    if (lower.includes("work") || lower.includes("meeting") || lower.includes("task")) return "Work";
-    if (lower.includes("breakfast") || lower.includes("lunch") || lower.includes("dinner") || lower.includes("eat")) return "Meals";
-    if (lower.includes("gym") || lower.includes("exercise") || lower.includes("workout") || lower.includes("run")) return "Exercise";
-    if (lower.includes("shop") || lower.includes("grocery") || lower.includes("errand")) return "Shopping";
-    if (lower.includes("clean") || lower.includes("chores") || lower.includes("laundry")) return "Household";
-    if (lower.includes("youtube") || lower.includes("tv") || lower.includes("video") || lower.includes("watch")) return "Entertainment";
-    if (lower.includes("read") || lower.includes("study") || lower.includes("learn")) return "Learning";
-    if (lower.includes("social") || lower.includes("friend") || lower.includes("family") || lower.includes("call")) return "Social";
+    // Work-related (check first as it's most specific)
+    if (lower.includes("work") || lower.includes("meeting") || lower.includes("task") || 
+        lower.includes("project") || lower.includes("sprint") || lower.includes("brainstorm")) return "Work";
+    
+    // Meals
+    if (lower.includes("breakfast") || lower.includes("lunch") || lower.includes("dinner") || 
+        lower.includes("eat") || lower.includes("meal")) return "Meals";
+    
+    // Exercise & Health
+    if (lower.includes("gym") || lower.includes("exercise") || lower.includes("workout") || 
+        lower.includes("run") || lower.includes("fitness")) return "Exercise";
+    
+    // Travel & Commute
+    if (lower.includes("travel") || lower.includes("commute") || lower.includes("driving") || 
+        lower.includes("drive") || lower.includes("transit")) return "Travel";
+    
+    // Social & Events
+    if (lower.includes("social") || lower.includes("friend") || lower.includes("family") || 
+        lower.includes("call") || lower.includes("event") || lower.includes("team")) return "Social";
+    
+    // Shopping & Errands
+    if (lower.includes("shop") || lower.includes("grocery") || lower.includes("errand") || 
+        lower.includes("store")) return "Shopping";
+    
+    // Household & Personal Care
+    if (lower.includes("clean") || lower.includes("chores") || lower.includes("laundry") || 
+        lower.includes("morning routine") || lower.includes("getting ready") || 
+        lower.includes("shower") || lower.includes("routine")) return "Personal Care";
+    
+    // Entertainment
+    if (lower.includes("youtube") || lower.includes("tv") || lower.includes("video") || 
+        lower.includes("watch") || lower.includes("game") || lower.includes("movie")) return "Entertainment";
+    
+    // Learning (keep specific to actual learning activities)
+    if (lower.includes("read") || lower.includes("study") || lower.includes("course") || 
+        lower.includes("class") || lower.includes("training")) return "Learning";
     
     return "Other";
   };
@@ -108,7 +136,9 @@ export default function Insights() {
     if (!selectedSchedule) return;
 
     const schedule = selectedSchedule.scheduleData;
-    const date = new Date(selectedSchedule.date);
+    // Parse date string properly to avoid timezone issues
+    const [year, month, day] = selectedSchedule.date.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     
     let icsContent = [
       "BEGIN:VCALENDAR",
@@ -127,7 +157,6 @@ export default function Insights() {
         `DTSTART:${formatICSDateTime(startDateTime)}`,
         `DTEND:${formatICSDateTime(endDateTime)}`,
         `SUMMARY:${entry.description}`,
-        `DESCRIPTION:${entry.description}`,
         `UID:${selectedSchedule.id}-${index}@sunday-app`,
         `DTSTAMP:${formatICSDateTime(new Date())}`,
         "END:VEVENT"
@@ -139,7 +168,9 @@ export default function Insights() {
     const blob = new Blob([icsContent.join("\r\n")], { type: "text/calendar;charset=utf-8" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `schedule-${selectedSchedule.date}.ics`;
+    // Format the date for the filename (e.g., "2026-01-19")
+    const formattedDate = date.toISOString().split('T')[0];
+    link.download = `schedule-${formattedDate}.ics`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -190,6 +221,25 @@ export default function Insights() {
             <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "15px", color: "#333" }}>
               Full Schedule
             </h2>
+            {/* Date Display */}
+            <div style={{
+              textAlign: "center",
+              marginBottom: "16px",
+              fontSize: "16px",
+              fontWeight: "600",
+              color: "#007AFF",
+            }}>
+              {(() => {
+                const [year, month, day] = selectedSchedule.date.split('-').map(Number);
+                const date = new Date(year, month - 1, day);
+                return date.toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                });
+              })()}
+            </div>
             <table
               style={{
                 width: "100%",
@@ -247,7 +297,7 @@ export default function Insights() {
                 boxShadow: "0 4px 12px rgba(0, 122, 255, 0.3)",
               }}
             >
-              📅 Download as Calendar (.ics)
+              📅 Download Calendar File (.ics)
             </button>
           </div>
 
