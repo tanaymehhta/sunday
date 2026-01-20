@@ -29,9 +29,10 @@ import {
 } from "@/hooks/formatRecordings";
 import ScheduleTable from "@/components/ScheduleTable";
 import Insights from "@/components/Insights";
+import Welcome from "@/components/Welcome";
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState("record");
+  const [activeTab, setActiveTab] = useState("welcome");
   const [isRunning, setIsRunning] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<
     ConversationMessage[]
@@ -327,6 +328,8 @@ export default function Home() {
 
   const renderTabContent = () => {
     switch (activeTab) {
+      case "welcome":
+        return <Welcome />;
       case "record":
         return (
           <>
